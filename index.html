@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#083780">
+  <meta name="description" id="metaDescription" content="Portal Pelayanan Administrasi Digital & Informasi Desa.">
+  <meta name="keywords" content="Pelayanan Desa, Surat Online, SKTM, SKU, Domisili, APBDes, Bendahara">
+  <meta name="author" content="Pemerintah Desa">
+  <meta name="robots" content="index, follow">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" id="ogTitle" content="Website Resmi Pelayanan Digital Desa">
+  <meta property="og:description" content="Portal pelayanan administrasi digital & transparansi anggaran desa.">
+  <meta property="og:locale" content="id_ID">
+
+  <title id="siteTitle">Website Resmi Pelayanan Digital Desa</title>
+
+  <!-- Favicon akan ditukar otomatis oleh JS dari pengaturan -->
+  <link id="faviconLink" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23083780'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Arial' font-weight='900' text-anchor='middle' fill='%23f59e0b'%3EB%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              DEFAULT: '#083780', dark: '#052a63', darker: '#03153b',
+              gold: '#f59e0b', goldDark: '#d97706'
+            }
+          },
+          fontFamily: { sans: ['Lato','system-ui','sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS v2 Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Firebase v8 (kompatibel, CDN langsung) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Firebase config opsional (di-inject saat build/deploy) -->
+  <script src="./firebase-config.js" onerror="console.info('firebase-config.js belum di-set, fallback localStorage aktif.')"></script>
+
+  <style>
+    body { font-family: 'Lato', system-ui, sans-serif; }
+    .modal { display: none; } .modal.active { display: flex; }
+    .dashboard-panel { display: none; } .dashboard-panel.active { display: block; }
+    .dropdown-content { opacity:0; visibility:hidden; transform: translateY(10px); transition: opacity .25s ease, transform .25s ease, visibility .25s; }
+    .group:hover .dropdown-content, .group:focus-within .dropdown-content { opacity:1; visibility:visible; transform: translateY(0); }
+    .page-view { display: none; animation: fadeIn .45s ease-in-out; }
+    .page-view.active-page { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform: translateY(0);} }
+    .ticker-wrap { overflow: hidden; white-space: nowrap; }
+    .ticker-track { display: inline-block; padding-left: 100%; animation: ticker 32s linear infinite; }
+    .ticker-wrap:hover .ticker-track, .ticker-wrap:focus-within .ticker-track { animation-play-state: paused; }
+    @keyframes ticker { 0% { transform: translateX(0);} 100% { transform: translateX(-100%);} }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid #f59e0b; outline-offset:2px; border-radius:6px;
+    }
+    .skip-link { position:absolute; left:-9999px; top:0; background:#083780; color:#fff; padding:10px 16px; z-index:9999; font-weight:700; }
+    .skip-link:focus { left:8px; top:8px; }
+    #globalLoader { position:fixed; inset:0; z-index:10000; background:#fff; display:flex; align-items:center; justify-content:center; transition: opacity .5s ease, visibility .5s ease; }
+    #globalLoader.hidden-loader { opacity:0; visibility:hidden; }
+    .spinner { width:48px; height:48px; border:4px solid #e5e7eb; border-top-color:#083780; border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg);} }
+    .staff-card { transition: transform .3s ease, box-shadow .3s ease; }
+    .staff-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px -10px rgba(8,55,128,.25); }
+    #toastArea { position:fixed; bottom:1.25rem; left:1.25rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; }
+    .glass-card { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border:1px solid rgba(226,232,240,0.8); }
+    @media print { nav, footer, #chatFab, #chatBox, #kadesPopup { display:none !important; } .page-view { display: block !important; } }
+    td.col-money { font-variant-numeric: tabular-nums; }
+    .role-pill { font-size: 9px; padding:2px 8px; border-radius:9999px; font-weight:700; letter-spacing: .05em; text-transform: uppercase; }
+  </style>
+</head>
+<body class="relative min-h-screen scroll-smooth bg-slate-50 text-slate-900 antialiased">
+
+  <a href="#konten-utama" class="skip-link">Lewati ke konten utama</a>
+
+  <div id="globalLoader" role="status" aria-live="polite">
+    <div class="flex flex-col items-center gap-3">
+      <div class="spinner"></div>
+      <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">Memuat Data Desa...</p>
+    </div>
+  </div>
+
+  <div id="toastArea" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="kadesPopup" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-500" role="dialog" aria-modal="true" aria-labelledby="popNamaKades">
+    <div id="kadesPopupContent" class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm text-center border-t-8 border-amber-500 relative transform transition-transform scale-95 mx-4">
+      <button type="button" onclick="tutupPopupKades()" aria-label="Tutup sambutan" class="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      <img id="popImgKades" src="" alt="Foto Kepala Desa" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-white shadow-lg -mt-16 mb-4 bg-gray-100">
+      <h3 id="popNamaKades" class="text-2xl font-black text-brand">Nama Kades</h3>
+      <p class="text-xs text-amber-500 font-bold uppercase tracking-widest mb-4">Kepala Desa</p>
+      <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+        <p id="popPesanKades" class="text-sm text-slate-600 italic">"Selamat datang."</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBSITE UTAMA (PUBLIC) -->
+  <div id="mainWebsite">
+    <nav class="fixed top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 py-3 px-6 md:px-12 flex justify-between items-center shadow-sm" aria-label="Navigasi utama">
+      <a href="#" onclick="bukaHalaman('page-beranda'); return false;" class="flex items-center gap-3">
+        <img id="logoHeader" src="" alt="Logo Desa" class="hidden h-10 w-10 rounded-full object-cover shadow-inner border border-gray-200">
+        <div id="logoBulat" class="h-10 w-10 bg-brand rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">D</div>
+        <span class="font-extrabold text-xl tracking-tight text-brand">DESA <span id="navNamaDesa" class="text-amber-500">BAGU</span></span>
+      </a>
+
+      <div class="hidden md:flex gap-6 font-medium text-sm text-slate-600 items-center">
+        <a href="#" onclick="bukaHalaman('page-beranda'); return false;" class="hover:text-brand transition font-bold">Beranda</a>
+        <div class="relative group pb-2 -mb-2 pt-2 -mt-2 cursor-pointer">
+          <button type="button" onclick="bukaHalaman('page-profil')" class="hover:text-brand transition flex items-center gap-1 font-bold">Profil Desa
+            <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div class="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 shadow-xl rounded-xl dropdown-content flex flex-col overflow-hidden z-50">
+            <a href="#" onclick="bukaHalaman('page-profil', 'visiMisiSection'); return false;" class="px-5 py-3 text-sm hover:bg-blue-50 hover:text-brand transition border-b border-gray-50">Visi &amp; Misi Desa</a>
+            <a href="#" onclick="bukaHalaman('page-profil', 'strukturSection'); return false;" class="px-5 py-3 text-sm hover:bg-blue-50 hover:text-brand transition">Struktur Organisasi</a>
+          </div>
+        </div>
+        <div class="relative group pb-2 -mb-2 pt-2 -mt-2 cursor-pointer">
+          <button type="button" onclick="bukaHalaman('page-transparansi')" class="hover:text-brand transition flex items-center gap-1 font-bold">Transparansi
+            <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div class="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 shadow-xl rounded-xl dropdown-content flex flex-col overflow-hidden z-50">
+            <a href="#" onclick="switchPanelPublic('apbdes-section'); bukaHalaman('page-transparansi'); window.scrollTo(0,0); return false;" class="px-5 py-3 text-sm hover:bg-blue-50 hover:text-brand transition border-b border-gray-50">APBDes</a>
+            <a href="#" onclick="switchPanelPublic('add-section'); bukaHalaman('page-transparansi'); window.scrollTo(0,0); return false;" class="px-5 py-3 text-sm hover:bg-blue-50 hover:text-brand transition">Alokasi Dana Desa (ADD)</a>
+            <a href="#" onclick="switchPanelPublic('realisasi-section'); bukaHalaman('page-transparansi'); window.scrollTo(0,0); return false;" class="px-5 py-3 text-sm hover:bg-blue-50 hover:text-brand transition">Realisasi Penggunaan</a>
+          </div>
+        </div>
+        <a href="#" onclick="bukaHalaman('page-layanan'); return false;" class="hover:text-brand transition font-bold">Layanan Publik</a>
+        <a href="#" onclick="bukaHalaman('page-lokasi'); return false;" class="hover:text-brand transition font-bold">Peta Lokasi</a>
+      </div>
+
+      <button id="mobileMenuToggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="mobileMenuDropdown" class="md:hidden flex items-center justify-center p-2 text-brand hover:text-amber-500 transition focus:outline-none" onclick="toggleMobileMenu()">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </nav>
+
+    <div id="mobileMenuDropdown" class="hidden md:hidden fixed top-[64px] left-0 w-full bg-white border-b border-gray-200 shadow-2xl z-40 flex-col divide-y divide-gray-100">
+      <a href="#" onclick="bukaHalaman('page-beranda'); return false;" class="px-6 py-4 font-bold text-brand hover:bg-gray-50">Beranda</a>
+      <a href="#" onclick="bukaHalaman('page-profil'); return false;" class="px-6 py-4 font-bold text-brand hover:bg-gray-50">Profil &amp; Struktur</a>
+      <a href="#" onclick="bukaHalaman('page-transparansi'); return false;" class="px-6 py-4 font-bold text-brand hover:bg-gray-50">Transparansi Anggaran</a>
+      <a href="#" onclick="bukaHalaman('page-layanan'); return false;" class="px-6 py-4 font-bold text-brand hover:bg-gray-50">Layanan Administrasi Online</a>
+      <a href="#" onclick="bukaHalaman('page-lokasi'); return false;" class="px-6 py-4 font-bold text-brand hover:bg-gray-50">Peta Lokasi</a>
+    </div>
+
+    <main id="konten-utama" class="relative pt-16 min-h-screen">
+
+      <div class="w-full bg-amber-100 border-b border-amber-200 py-2.5 flex items-center px-4 overflow-hidden shadow-inner z-30 relative mt-2" role="region" aria-label="Informasi utama berjalan">
+        <span class="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded mr-3 shrink-0 tracking-wider">INFO UTAMA</span>
+        <div class="ticker-wrap flex-1">
+          <span id="tickerHeadline" class="ticker-track text-xs font-bold text-brand">Memuat informasi data utama...</span>
+        </div>
+      </div>
+
+      <!-- BERANDA -->
+      <div id="page-beranda" class="page-view active-page">
+        <section class="relative w-full overflow-hidden h-[520px] md:h-[600px] flex items-center" style="background: linear-gradient(135deg, #051937 0%, #004d7a 100%);">
+          <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" aria-hidden="true"></div>
+          <div class="container mx-auto max-w-screen-xl px-6 md:px-12 relative z-10 text-white">
+            <span class="inline-block bg-amber-500/20 text-amber-400 border border-amber-500/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-6">Pelayanan Digital Terpadu</span>
+            <h1 class="text-4xl md:text-6xl font-black leading-tight max-w-3xl mb-4">
+              Sistem Informasi &amp; Pelayanan Mandiri
+              <span id="heroJudulDesa" class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200">Masyarakat Desa</span>
+            </h1>
+            <p id="heroDeskripsi" class="text-lg md:text-xl text-slate-300 max-w-2xl mb-8 font-light">Komitmen Pemerintah Desa dalam mewujudkan birokrasi yang cepat, transparan, dan efisien.</p>
+            <div class="flex flex-wrap gap-4 mb-8">
+              <button onclick="bukaHalaman('page-layanan')" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-sm px-6 py-3 rounded-xl transition shadow-lg">Ajukan Surat Online →</button>
+              <button onclick="bukaHalaman('page-transparansi')" class="bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white font-bold text-sm px-6 py-3 rounded-xl transition">Lihat Transparansi Anggaran</button>
+            </div>
+            <div class="inline-flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+              <div class="flex items-center gap-3">
+                <svg class="h-6 w-6 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <div>
+                  <p class="text-xs text-slate-400 font-medium">Wilayah Administratif</p>
+                  <p id="heroWilayah" class="text-sm font-bold text-white">Kecamatan Pringgarata, Lombok Tengah</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white py-10 border-b border-gray-100">
+          <div class="container mx-auto max-w-screen-xl px-6 md:px-12 grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div class="text-center"><p id="statPenduduk" class="text-3xl md:text-4xl font-black text-brand">—</p><p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Jumlah Penduduk</p></div>
+            <div class="text-center"><p id="statDusun" class="text-3xl md:text-4xl font-black text-brand">—</p><p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Dusun</p></div>
+            <div class="text-center"><p id="statLuas" class="text-3xl md:text-4xl font-black text-brand">—</p><p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Luas Wilayah</p></div>
+            <div class="text-center"><p id="statLayanan" class="text-3xl md:text-4xl font-black text-brand">24/7</p><p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Layanan Online</p></div>
+          </div>
+        </section>
+
+        <section class="relative pb-16 pt-16 bg-white shadow-sm border-b border-gray-100">
+          <div class="container mx-auto max-w-screen-xl px-6 md:px-12">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+              <h2 class="text-3xl font-black text-slate-900 mb-3">Keunggulan Pelayanan Digital</h2>
+              <p class="text-slate-500 text-sm">Akses administrasi terintegrasi untuk mempercepat alur birokrasi konvensional.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <article class="p-8 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-brand hover:bg-white transition-all duration-300 group shadow-sm">
+                <div class="h-12 w-12 rounded-xl bg-blue-50 text-brand flex items-center justify-center mb-6 group-hover:bg-brand group-hover:text-white transition-all">📄</div>
+                <h3 class="text-lg font-bold text-slate-900 mb-2">Paperless Terarah</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">Pengajuan tanpa berkas fisik diawal, meminimalkan risiko berkas hilang.</p>
+              </article>
+              <article class="p-8 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-brand hover:bg-white transition-all duration-300 group shadow-sm">
+                <div class="h-12 w-12 rounded-xl bg-blue-50 text-brand flex items-center justify-center mb-6 group-hover:bg-brand group-hover:text-white transition-all">⚡</div>
+                <h3 class="text-lg font-bold text-slate-900 mb-2">Respons Cepat Petugas</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">Sistem langsung terhubung WhatsApp Admin untuk respons kilat di jam kerja.</p>
+              </article>
+              <article class="p-8 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-brand hover:bg-white transition-all duration-300 group shadow-sm">
+                <div class="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6 group-hover:bg-amber-500 group-hover:text-white transition-all">✅</div>
+                <h3 class="text-lg font-bold text-slate-900 mb-2">100% Gratis</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">Seluruh pelayanan administrasi melalui website ini bebas biaya sepeser pun.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- PROFIL -->
+      <div id="page-profil" class="page-view">
+        <section id="visiMisiSection" class="mx-auto mt-8 mb-16 max-w-screen-xl px-6 md:px-12 scroll-mt-24">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center bg-white p-8 md:p-12 rounded-3xl border border-gray-100 shadow-sm">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Cita-Cita Luhur</span>
+              <h2 class="text-3xl font-black text-slate-900 mt-2 mb-4">Visi Pemerintah Desa</h2>
+              <div class="p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                <p id="txtVisi" class="text-lg font-bold text-brand italic leading-relaxed">"Mewujudkan pelayanan desa yang transparan, akuntabel, dan mandiri berbasis teknologi."</p>
+              </div>
+            </div>
+            <div>
+              <h2 class="text-3xl font-black text-slate-900 mb-4">Misi Utama</h2>
+              <ul class="space-y-3 text-sm text-slate-600 leading-relaxed">
+                <li class="flex items-start gap-2"><span class="text-emerald-500 font-bold mt-0.5">✓</span><span id="txtMisi1">—</span></li>
+                <li class="flex items-start gap-2"><span class="text-emerald-500 font-bold mt-0.5">✓</span><span id="txtMisi2">—</span></li>
+                <li class="flex items-start gap-2"><span class="text-emerald-500 font-bold mt-0.5">✓</span><span id="txtMisi3">—</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="strukturSection" class="mx-auto my-16 max-w-screen-xl px-6 md:px-12 scroll-mt-24">
+          <div class="text-center max-w-2xl mx-auto mb-12">
+            <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Aparatur Pemerintahan</span>
+            <h2 class="text-3xl font-black text-slate-900 mt-2 mb-3">Struktur Organisasi Desa</h2>
+          </div>
+          <div class="flex flex-col items-center gap-8">
+            <div class="staff-card bg-white border border-gray-100 p-6 rounded-2xl shadow-sm text-center w-64 border-t-4 border-amber-500">
+              <div class="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl overflow-hidden">
+                <img id="strFotoKades" src="" alt="Foto Kades" class="w-full h-full object-cover hidden" onerror="this.classList.add('hidden'); $('strIkonKades').classList.remove('hidden');">
+                <span id="strIkonKades">👨‍💼</span>
+              </div>
+              <h4 id="strNamaKades" class="font-bold text-slate-900 text-base">—</h4>
+              <p class="text-xs text-amber-600 font-bold uppercase mt-1">Kepala Desa</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-5xl">
+              <div class="staff-card bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center border-t-4 border-blue-600">
+                <div class="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-xl">👨‍💼</div>
+                <h4 id="strNamaSekdes" class="font-bold text-slate-900 text-sm">—</h4>
+                <p class="text-[11px] text-blue-600 font-bold uppercase mt-1">Sekretaris Desa</p>
+              </div>
+              <div class="staff-card bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center border-t-4 border-blue-600">
+                <div class="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-xl">💻</div>
+                <h4 id="strNamaOperator" class="font-bold text-slate-900 text-sm">—</h4>
+                <p class="text-[11px] text-blue-600 font-bold uppercase mt-1">Operator Desa</p>
+              </div>
+              <div class="staff-card bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center border-t-4 border-blue-600">
+                <div class="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-xl">📋</div>
+                <h4 id="strNamaKaur" class="font-bold text-slate-900 text-sm">—</h4>
+                <p class="text-[11px] text-blue-600 font-bold uppercase mt-1">Kaur Pelayanan</p>
+              </div>
+              <div class="staff-card bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center border-t-4 border-emerald-600">
+                <div class="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-xl">💰</div>
+                <h4 id="strNamaBendahara" class="font-bold text-slate-900 text-sm">—</h4>
+                <p class="text-[11px] text-emerald-600 font-bold uppercase mt-1">Bendahara Desa</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- TRANSPARANSI -->
+      <div id="page-transparansi" class="page-view">
+        <section class="mx-auto mt-8 mb-16 max-w-screen-xl px-6 md:px-12 scroll-mt-24">
+          <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 md:p-12 text-white shadow-xl">
+            <div class="max-w-2xl mb-10">
+              <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Akuntabilitas Finansial</span>
+              <h2 class="text-3xl font-black mt-2 mb-3">Transparansi Anggaran Desa</h2>
+              <p class="text-slate-400 text-sm">Data agregat dari input Bendahara Desa. Tidak ada nilai yang dimasukkan manual.</p>
+            </div>
+
+            <div class="flex gap-2 mb-6 border-b border-white/10 pb-2 text-xs">
+              <button id="tab-apbdes" onclick="switchPanelPublic('apbdes-section')" class="px-4 py-2 rounded-lg bg-amber-500 text-slate-900 font-bold transition">APBDes</button>
+              <button id="tab-add" onclick="switchPanelPublic('add-section')" class="px-4 py-2 rounded-lg text-slate-300 hover:bg-white/10 font-bold transition">ADD</button>
+              <button id="tab-realisasi" onclick="switchPanelPublic('realisasi-section')" class="px-4 py-2 rounded-lg text-slate-300 hover:bg-white/10 font-bold transition">Realisasi Penggunaan</button>
+            </div>
+
+            <!-- APBDes info agregat dari bendahara -->
+            <div id="apbdes-section" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="font-bold text-base text-white">Pagu APBDes</h4>
+                  <span id="lblTotalApb" class="text-xs bg-amber-500 text-slate-900 font-bold px-2.5 py-1 rounded-lg">Rp 0</span>
+                </div>
+                <p class="text-xs text-slate-400">Dikelola & diedit di menu <strong>Identitas</strong> (pagunya). Sisa & penggunaan dihitung dari transaksi Bendahara.</p>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h4 class="font-bold text-base text-white mb-3">Sisa Pagu APBDes Saat Ini</h4>
+                <p id="sisaApbdesText" class="text-2xl font-black text-amber-400">Rp 0</p>
+                <p class="text-[10px] text-slate-400 mt-2">Total pagu dikurangi seluruh transaksi kategori APBDes</p>
+              </div>
+            </div>
+
+            <div id="add-section" class="hidden grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="font-bold text-base text-white">Pagu ADD</h4>
+                  <span id="lblTotalAdd" class="text-xs bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-lg">Rp 0</span>
+                </div>
+                <p class="text-xs text-slate-400">Dikelola di menu <strong>Identitas</strong>. Penggunaan terlampir di tab berikutnya.</p>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h4 class="font-bold text-base text-white mb-3">Sisa Pagu ADD</h4>
+                <p id="sisaAddText" class="text-2xl font-black text-emerald-400">Rp 0</p>
+              </div>
+            </div>
+
+            <!-- REALISASI PENGUNAAN (auto-aggregate dari transaksi bendahara) -->
+            <div id="realisasi-section" class="hidden">
+              <h4 class="font-bold text-base text-white mb-4">📊 Ringkasan Realisasi Penggunaan Anggaran</h4>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-400">Total Transaksi</p>
+                  <p id="realCount" class="text-2xl font-black text-white mt-1">0</p>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-400">Total Bruto</p>
+                  <p id="realBruto" class="text-2xl font-black text-white mt-1">Rp 0</p>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-400">Total Pajak</p>
+                  <p id="realPajak" class="text-2xl font-black text-amber-400 mt-1">Rp 0</p>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-400">Total Netto (Dibelanjakan)</p>
+                  <p id="realNetto" class="text-2xl font-black text-emerald-400 mt-1">Rp 0</p>
+                </div>
+              </div>
+              <div class="overflow-x-auto text-xs rounded-2xl border border-white/10 bg-white/5">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="bg-white/5 text-slate-300 font-bold">
+                      <th class="p-3">Tanggal</th><th class="p-3">Kategori</th><th class="p-3">Kegiatan</th>
+                      <th class="p-3">Bruto</th><th class="p-3">Pajak</th><th class="p-3">Netto</th><th class="p-3">Bendahara</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tblTransaksiPublik" class="divide-y divide-white/10 text-slate-200"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- LAYANAN -->
+      <div id="page-layanan" class="page-view">
+        <section class="mx-auto mt-8 mb-16 max-w-screen-xl px-4 md:px-8 lg:px-12 scroll-mt-24">
+          <div class="relative rounded-3xl p-8 md:p-12 text-white shadow-xl overflow-hidden" style="background: linear-gradient(90deg, rgba(8,55,128,1) 0%, rgba(11,37,82,1) 56%);">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
+              <div class="lg:col-span-5">
+                <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Layanan Mandiri Warga</span>
+                <h2 class="text-2xl md:text-4xl font-extrabold mt-2 mb-4 leading-snug">Pengajuan Surat Administrasi Online</h2>
+                <p class="text-slate-300 font-light leading-relaxed mb-6">Pilih jenis surat dan isi formulir. Status pengajuan akan diinfokan via WhatsApp Admin.</p>
+              </div>
+              <div class="lg:col-span-7 bg-white text-slate-900 rounded-2xl p-6 md:p-8 shadow-lg">
+                <form id="formSurat" onsubmit="kirimPengajuanSurat(event)" novalidate>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Jenis Surat *</label>
+                      <select id="jenisSurat" class="w-full text-sm border border-gray-200 rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" required>
+                        <option value="">-- Pilih Jenis Surat --</option>
+                        <option>Surat Keterangan Tidak Mampu (SKTM)</option>
+                        <option>Surat Keterangan Usaha (SKU)</option>
+                        <option>Surat Keterangan Domisili</option>
+                        <option>Surat Pengantar Pembuatan KK/KTP</option>
+                        <option>Surat Keterangan Kelahiran</option>
+                        <option>Surat Keterangan Kematian</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK KTP *</label>
+                      <input type="text" inputmode="numeric" maxlength="16" id="nik" pattern="[0-9]{16}" class="w-full text-sm border border-gray-200 rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" placeholder="16 Digit NIK Anda" required>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div><label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap *</label><input type="text" id="nama" class="w-full text-sm border rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" required></div>
+                    <div><label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No WhatsApp Aktif *</label><input type="tel" id="whatsapp" class="w-full text-sm border rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" placeholder="08123456789" required></div>
+                  </div>
+                  <div class="mb-4"><label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alamat Lengkap *</label><input type="text" id="alamat" class="w-full text-sm border rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" required></div>
+                  <div class="mb-6"><label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Keperluan / Alasan Pengajuan *</label><textarea id="keperluan" rows="3" class="w-full text-sm border rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" required></textarea></div>
+                  <button type="submit" id="btnSubmitSurat" class="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-slate-900 font-bold text-sm py-3 px-6 rounded-xl transition shadow-md">Kirim Pengajuan Surat</button>
+                </form>
+              </div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mt-8">
+              <div class="text-center mb-6">
+                <h3 class="text-xl md:text-2xl font-bold text-white mb-2">📥 Unduh Berkas Tervalidasi</h3>
+                <p class="text-sm text-slate-300">Masukkan NIK untuk melacak dan mengunduh surat yang telah disahkan.</p>
+              </div>
+              <div class="flex flex-col md:flex-row gap-3 max-w-xl mx-auto">
+                <input type="text" maxlength="16" id="inputNikDownload" class="flex-1 text-sm border-0 rounded-xl p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Masukkan 16 Digit NIK...">
+                <button onclick="cekDownloadSuratWarga()" class="bg-brand hover:bg-brand-dark text-white font-bold py-3 px-6 rounded-xl transition shadow-md whitespace-nowrap">Cari Surat</button>
+              </div>
+              <div id="hasilDownloadSurat" class="hidden mt-6 bg-white rounded-xl p-4 md:p-6 text-slate-900 max-w-xl mx-auto shadow-xl">
+                <div class="mb-3 border-b border-gray-100 pb-3">
+                  <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Dokumen Siap</p>
+                  <h4 id="h4JudulDownloadSurat" class="text-sm font-black text-slate-800">—</h4>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">Nama Berkas: <span id="txtNamaFileDownload" class="font-mono text-slate-900">—</span></p>
+                <a id="btnLinkDownloadSurat" href="#" target="_blank" rel="noopener" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-center font-bold text-xs py-2.5 px-4 rounded-lg transition shadow block">Unduh Sekarang (PDF)</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- LOKASI -->
+      <div id="page-lokasi" class="page-view">
+        <section class="mx-auto mt-8 mb-16 max-w-screen-xl px-6 md:px-12 scroll-mt-24">
+          <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <h3 class="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">📍 Peta Lokasi Kantor Desa</h3>
+            <div id="wadahMapsIframe" class="w-full h-96 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+              <iframe id="mapsIframe" title="Peta lokasi Desa" src="" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="bg-[#030f1e] text-white border-t border-slate-800">
+      <div class="mx-auto max-w-screen-xl px-6 md:px-12 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <img id="footerLogoImg" src="" alt="Logo" class="hidden h-8 w-8 rounded-full object-cover border border-gray-300">
+            <div id="footerLogoBulat" class="h-8 w-8 bg-amber-500 rounded-full flex items-center justify-center text-slate-900 font-bold text-base">D</div>
+            <span class="font-black text-lg tracking-tight text-white">DESA <span id="footerNamaDesa" class="text-amber-500">BAGU</span></span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed max-w-xs">Portal integrasi pelayanan mandiri berbasis database cloud.</p>
+        </div>
+        <div>
+          <h4 class="text-amber-500 font-bold uppercase tracking-wider text-xs mb-4">Akses Cepat</h4>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
+            <a href="#" onclick="bukaHalaman('page-beranda'); return false;" class="hover:text-white transition">Beranda</a>
+            <a href="#" onclick="bukaHalaman('page-profil'); return false;" class="hover:text-white transition">Profil Desa</a>
+            <a href="#" onclick="bukaHalaman('page-transparansi'); return false;" class="hover:text-white transition">Transparansi</a>
+            <a href="#" onclick="bukaHalaman('page-layanan'); return false;" class="hover:text-white transition">Layanan</a>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-amber-500 font-bold uppercase tracking-wider text-xs mb-2">Kantor Desa</h4>
+          <span id="footerTextAlamat" class="text-slate-300 leading-relaxed text-xs">Alamat Kantor Desa</span>
+        </div>
+      </div>
+      <div class="relative z-20 w-full bg-[#05182e] py-4 px-6 md:px-12 flex flex-col sm:flex-row gap-2 justify-between items-center text-xs text-slate-500">
+        <p>© <span id="tahunSekarang">2026</span> Pemerintah Desa. Seluruh hak cipta dilindungi.</p>
+        <button onclick="toggleModal('loginModal')" class="hover:text-slate-300 transition-colors cursor-pointer flex items-center gap-1 opacity-70">🔒 Portal Administrasi</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL LOGIN (Admin / Operator / Bendahara) -->
+  <div id="loginModal" class="modal fixed inset-0 z-50 items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-white rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm w-full relative">
+      <button onclick="toggleModal('loginModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      <h3 class="text-xl font-black text-slate-900 mb-2 text-center">Portal Administrasi Desa</h3>
+      <p class="text-xs text-slate-500 mb-6 text-center">Login sebagai Admin, Operator Pelayanan, atau Bendahara Desa.</p>
+      <form onsubmit="handleLogin(event)" class="space-y-4 text-xs" autocomplete="off">
+        <div><label class="block font-bold text-slate-700 uppercase mb-1">Username</label><input type="text" id="username" class="w-full border border-gray-200 rounded-lg p-2.5 bg-gray-50 focus:outline-none focus:border-brand" required></div>
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Kata Sandi</label>
+          <div class="relative">
+            <input type="password" id="password" class="w-full border border-gray-200 rounded-lg p-2.5 pr-10 bg-gray-50 focus:outline-none focus:border-brand" required>
+            <button type="button" onclick="togglePassword('password', this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold px-2 py-1">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-brand hover:bg-brand-dark text-white font-bold py-3 px-4 rounded-xl transition shadow-md">Masuk ke Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD ADMIN -->
+  <div id="dashboardUtama" class="hidden fixed inset-0 z-[100] bg-slate-900 flex-col md:flex-row font-sans overflow-y-auto md:overflow-hidden">
+
+    <aside class="w-full md:w-72 bg-slate-950/90 text-white p-6 flex flex-col justify-between shrink-0 border-r border-slate-800/80 backdrop-blur-xl">
+      <div class="space-y-6">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <div class="h-9 w-9 bg-gradient-to-tr from-amber-500 to-yellow-300 rounded-xl flex items-center justify-center font-black text-slate-900 text-sm shadow-lg shadow-amber-500/20">A</div>
+            <div>
+              <h2 class="text-sm font-black tracking-wider uppercase text-slate-100" id="dashTitle">Panel Admin</h2>
+              <p class="text-[10px] text-slate-400">Pemerintahan Digital</p>
+            </div>
+          </div>
+          <button onclick="toggleAdminSidebar()" class="md:hidden text-slate-400 hover:text-white font-bold text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3 shadow-inner">
+          <div class="h-9 w-9 bg-blue-600/20 border border-blue-500/30 rounded-xl flex items-center justify-center text-lg">👤</div>
+          <div>
+            <h4 id="adminUserSession" class="text-xs font-bold text-white">—</h4>
+            <span id="roleBadge" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 role-pill">—</span>
+          </div>
+        </div>
+
+        <nav id="adminNav" class="space-y-1.5">
+          <button onclick="switchPanel('panelSurat', this)" class="menu-btn w-full text-left p-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs transition-all flex items-center gap-2.5 shadow-lg shadow-amber-500/10"><span>📋</span> Antrean &amp; Lacak Surat</button>
+          <div id="adminMenus" class="space-y-1.5">
+            <button data-roles="Superadmin,Operator Desa" onclick="switchPanel('panelIdentitas', this)" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>⚙️</span> Identitas &amp; Nama App</button>
+            <button data-roles="Superadmin,Operator Desa" onclick="switchPanel('panelKonten', this)" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>📝</span> Konten Web</button>
+            <button data-roles="Superadmin" onclick="switchPanel('panelAnggaran', this)" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>💰</span> Pagu Anggaran</button>
+            <button data-roles="Superadmin,Bendahara Desa" onclick="switchPanel('panelTransaksi', this)" id="btnMenuTransaksi" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>🧾</span> Input Penggunaan</button>
+            <button data-roles="Superadmin,Bendahara Desa" onclick="switchPanel('panelRekap', this)" id="btnMenuRekap" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>📊</span> Rekap Anggaran</button>
+            <button data-roles="Superadmin" onclick="switchPanel('panelUserManagement', this)" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>👥</span> Manajemen User</button>
+            <button data-roles="Superadmin" onclick="switchPanel('panelApi', this)" class="menu-btn w-full text-left p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-bold text-xs transition-all flex items-center gap-2.5"><span>🔌</span> Config &amp; Integrasi</button>
+          </div>
+        </nav>
+      </div>
+      <div class="mt-6">
+        <button onclick="logoutAdmin()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2.5 px-4 rounded-xl text-xs transition flex justify-center items-center gap-2">🚪 Keluar Dashboard</button>
+      </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 bg-slate-900/50 overflow-hidden">
+      <header class="bg-slate-950/80 border-b border-slate-800/80 p-4 px-6 flex justify-between items-center shrink-0 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleAdminSidebar()" class="md:hidden text-slate-300 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <h2 class="font-black text-sm md:text-base text-white tracking-wide">Sistem Informasi Pengaturan Desa</h2>
+        </div>
+        <span id="dbStatusBadge" class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Local Mode
+        </span>
+      </header>
+
+      <div class="flex-1 p-4 md:p-8 overflow-y-auto max-h-full">
+
+        <!-- Panel Antrean Surat -->
+        <div id="panelSurat" class="dashboard-panel active glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6 flex items-center justify-between"><span>📋 Antrean Pengajuan Surat Masyarakat</span><span class="text-xs font-normal text-slate-500">Otomatis Notifikasi WA</span></h3>
+          <div class="overflow-x-auto text-xs rounded-2xl border border-slate-200/60 shadow-inner bg-white/70">
+            <table class="w-full text-left border-collapse">
+              <thead><tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold"><th class="p-3.5">Pemohon (NIK)</th><th class="p-3.5">Jenis Surat</th><th class="p-3.5">Keperluan</th><th class="p-3.5">WhatsApp</th><th class="p-3.5 w-52 text-center">Aksi</th></tr></thead>
+              <tbody id="tableSuratMasuk" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel Identitas (semua role boleh edit profil default + logo) -->
+        <div id="panelIdentitas" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">⚙️ Pengaturan Identitas &amp; Logo Aplikasi</h3>
+          <form onsubmit="simpanIdentitasGlobal(event)" class="space-y-4 max-w-3xl text-xs">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Nama Desa (Nama Aplikasi)</label><input type="text" id="cfgNamaDesa" class="w-full border rounded-xl p-3 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-brand" required></div>
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Nomor WA Admin Desa</label><input type="text" id="cfgWaAdmin" placeholder="08xxxxxxxxxx" class="w-full border rounded-xl p-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand" required></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Kecamatan</label><input type="text" id="cfgKecamatan" class="w-full border rounded-xl p-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand" required></div>
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Kabupaten</label><input type="text" id="cfgKabupaten" class="w-full border rounded-xl p-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand" required></div>
+            </div>
+            <div><label class="block font-bold text-slate-700 uppercase mb-1">Alamat Kantor Lengkap</label><input type="text" id="cfgAlamat" class="w-full border rounded-xl p-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand" required></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Jumlah Penduduk</label><input type="text" id="cfgStatPenduduk" class="w-full border rounded-xl p-3 bg-white"></div>
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Jumlah Dusun</label><input type="text" id="cfgStatDusun" class="w-full border rounded-xl p-3 bg-white"></div>
+              <div><label class="block font-bold text-slate-700 uppercase mb-1">Luas Wilayah</label><input type="text" id="cfgStatLuas" class="w-full border rounded-xl p-3 bg-white"></div>
+            </div>
+            <div><label class="block font-bold text-slate-700 uppercase mb-1">Running Text (Headline News)</label><textarea id="cfgHeadline" rows="2" class="w-full border rounded-xl p-3 bg-white" required></textarea></div>
+            <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-xl text-xs transition shadow-lg">💾 Simpan Identitas Desa</button>
+          </form>
+        </div>
+
+        <!-- Panel Konten -->
+        <div id="panelKonten" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">📝 Konten Web &amp; Struktur Aparatur</h3>
+          <form onsubmit="simpanKontenGlobal(event)" class="space-y-6 text-xs max-w-3xl">
+            <div class="bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+              <h4 class="font-bold text-sm text-brand">A. Visi &amp; Misi</h4>
+              <div><label class="block font-bold text-slate-700 mb-1">Kalimat Visi</label><input type="text" id="cfgVisi" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div><label class="block font-bold text-slate-700 mb-1">Misi 1</label><input type="text" id="cfgMisi1" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Misi 2</label><input type="text" id="cfgMisi2" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Misi 3</label><input type="text" id="cfgMisi3" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+              </div>
+            </div>
+            <div class="bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60 space-y-4">
+              <h4 class="font-bold text-sm text-brand">B. Aparatur Desa</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block font-bold text-slate-700 mb-1">Nama Kades</label><input type="text" id="cfgKades" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+                <div><label class="block font-bold text-slate-700 mb-1">Foto Kades (URL)</label><input type="url" id="cfgFotoKades" class="w-full border rounded-xl p-2.5 bg-white"></div>
+              </div>
+              <div><label class="block font-bold text-slate-700 mb-1">Pesan Sambutan Pop-Up Kades</label><input type="text" id="cfgPesanKades" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div><label class="block font-bold text-slate-700 uppercase mb-1">Nama Sekdes</label><input type="text" id="cfgSekdes" class="w-full border rounded-xl p-2.5 bg-white"></div>
+                <div><label class="block font-bold text-slate-700 uppercase mb-1">Nama Operator</label><input type="text" id="cfgOperator" class="w-full border rounded-xl p-2.5 bg-white"></div>
+                <div><label class="block font-bold text-slate-700 uppercase mb-1">Nama Kaur</label><input type="text" id="cfgKaur" class="w-full border rounded-xl p-2.5 bg-white"></div>
+                <div><label class="block font-bold text-slate-700 uppercase mb-1">Nama Bendahara</label><input type="text" id="cfgBendahara" class="w-full border rounded-xl p-2.5 bg-white"></div>
+              </div>
+
+              <hr class="border-slate-200">
+              <h4 class="font-bold text-sm text-brand">🎨 Logo &amp; Favicon Aplikasi</h4>
+              <p class="text-[11px] text-slate-500">Upload logo desa, sistem akan menyimpannya di localStorage lalu otomatis menukar logo & favicon di seluruh halaman publik.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase mb-1">Upload Logo (PNG/JPG/SVG)</label>
+                  <input type="file" id="cfgLogoFile" accept="image/*" class="w-full text-xs border rounded-xl p-2 bg-white">
+                  <p class="text-[10px] text-slate-400 mt-1">Disimpan sebagai Data URL. Batas wajar: ≤ 500 KB.</p>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase mb-1">Atau URL Logo Online</label>
+                  <input type="url" id="cfgLogoUrl" placeholder="https://..." class="w-full border rounded-xl p-2.5 bg-white">
+                </div>
+              </div>
+              <div class="flex items-center gap-3 mt-2">
+                <div id="previewLogoBox" class="h-16 w-16 rounded-xl border bg-gray-100 flex items-center justify-center overflow-hidden">
+                  <img id="previewLogoImg" src="" alt="" class="hidden h-full w-full object-cover">
+                  <span id="previewLogoPh" class="text-[10px] text-slate-400">pratinjau</span>
+                </div>
+                <button type="button" onclick="clearLogo()" class="bg-red-500/10 text-red-600 border border-red-500/30 font-bold px-4 py-2 rounded-lg text-xs">🗑️ Hapus Logo Custom (kembali ke default)</button>
+              </div>
+            </div>
+
+            <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-xl text-xs transition shadow-lg">💾 Simpan Konten &amp; Logo</button>
+          </form>
+        </div>
+
+        <!-- Panel Pagu Anggaran (Superadmin) -->
+        <div id="panelAnggaran" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">💰 Pagu Anggaran APBDes &amp; ADD</h3>
+          <p class="text-xs text-slate-500 mb-4">⚠️ Pagu ini hanya mengatur <strong>total plafon</strong>. Jumlah terpakai dihitung otomatis dari input Bendahara.</p>
+          <form onsubmit="simpanAnggaranGlobal(event)" class="space-y-4 text-xs max-w-3xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+                <h4 class="font-bold text-sm text-brand">A. APBDes</h4>
+                <div><label class="block font-bold text-slate-700 mb-1">Total Pagu APBDes</label><input type="text" id="cfgApbTotal" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="block font-bold text-slate-700 mb-1">Infra (Rp)</label><input type="text" id="cfgApbVal1" class="w-full border rounded-xl p-2 bg-white" required></div>
+                  <div><label class="block font-bold text-slate-700 mb-1">% Target</label><input type="number" id="cfgApbPct1" class="w-full border rounded-xl p-2 bg-white" required></div>
+                </div>
+              </div>
+              <div class="bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+                <h4 class="font-bold text-sm text-brand">B. ADD</h4>
+                <div><label class="block font-bold text-slate-700 mb-1">Total Pagu ADD</label><input type="text" id="cfgAddTotal" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+                <div><label class="block font-bold text-slate-700 mb-1">% Operasional</label><input type="number" id="cfgApbPct2" class="w-full border rounded-xl p-2 bg-white" placeholder="40" min="0" max="100"></div>
+                <div><label class="block font-bold text-slate-700 mb-1">% Insentif</label><input type="number" id="cfgApbPct3" class="w-full border rounded-xl p-2 bg-white" placeholder="60" min="0" max="100"></div>
+              </div>
+            </div>
+            <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-xl text-xs transition shadow-lg">💾 Simpan Pagu</button>
+          </form>
+        </div>
+
+        <!-- Panel INPUT TRANSAKSI (Bendahara + Superadmin) -->
+        <div id="panelTransaksi" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">🧾 Input Penggunaan Anggaran (Bendahara)</h3>
+          <form onsubmit="submitTransaksi(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs max-w-4xl">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tanggal Transaksi</label>
+              <input type="date" id="trxTanggal" class="w-full border rounded-xl p-2.5 bg-white" required>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kategori Anggaran *</label>
+              <select id="trxKategori" class="w-full border rounded-xl p-2.5 bg-white" required>
+                <option value="">-- Pilih Kategori --</option>
+                <option value="APBDes - Infra">APBDes - Pembangunan Infrastruktur</option>
+                <option value="APBDes - Pemberdayaan">APBDes - Pemberdayaan Masyarakat</option>
+                <option value="APBDes - Pemerintahan">APBDes - Penyelenggaraan Pemerintahan</option>
+                <option value="ADD - Insentif">ADD - Insentif RT/RW/Perangkat</option>
+                <option value="ADD - Operasional">ADD - Operasional Kelembagaan</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Nama Kegiatan / Uraian *</label>
+              <input type="text" id="trxUraian" class="w-full border rounded-xl p-2.5 bg-white" placeholder="Contoh: Belanja cat untuk pengecatan balai desa" required>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nilai Bruto (Rp) *</label>
+              <input type="number" id="trxBruto" min="1" class="w-full border rounded-xl p-2.5 bg-white" placeholder="cth: 5000000" required>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">PPN (%)</label>
+              <input type="number" id="trxPpnPct" value="0" min="0" max="100" step="0.1" class="w-full border rounded-xl p-2.5 bg-white" oninput="hitungPajakPreview()">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">PPh (%)</label>
+              <input type="number" id="trxPphPct" value="0" min="0" max="100" step="0.1" class="w-full border rounded-xl p-2.5 bg-white" oninput="hitungPajakPreview()">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Pajak Daerah (%)</label>
+              <input type="number" id="trxPajakDaerahPct" value="0" min="0" max="100" step="0.1" class="w-full border rounded-xl p-2.5 bg-white" oninput="hitungPajakPreview()">
+            </div>
+            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 bg-blue-50/60 p-4 rounded-xl border border-blue-200">
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Total Pajak</p><p id="previewPajak" class="text-lg font-black text-amber-600">Rp 0</p></div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Netto Dibayarkan</p><p id="previewNetto" class="text-lg font-black text-emerald-600">Rp 0</p></div>
+              <div><p class="text-[10px] text-slate-500 font-bold uppercase">Sisa Pagu Kategori</p><p id="previewSisa" class="text-lg font-black text-brand">—</p></div>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Penerima Manfaat / Rekanan</label>
+              <input type="text" id="trxPenerima" class="w-full border rounded-xl p-2.5 bg-white" placeholder="Toko Sumber Bangunan / Pegawai / dll">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Catatan / No Bukti</label>
+              <textarea id="trxCatatan" rows="2" class="w-full border rounded-xl p-2.5 bg-white" placeholder="No Kwitansi / Keterangan tambahan"></textarea>
+            </div>
+
+            <div class="md:col-span-2">
+              <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-xl transition shadow-lg">💾 Simpan Transaksi</button>
+            </div>
+          </form>
+
+          <div class="mt-8">
+            <h4 class="font-bold text-sm text-slate-700 mb-3">Daftar Transaksi Terakhir</h4>
+            <div class="overflow-x-auto text-xs rounded-2xl border border-slate-200 bg-white/70">
+              <table class="w-full text-left">
+                <thead><tr class="bg-slate-100/80 border-b text-slate-600 font-bold"><th class="p-3">Tanggal</th><th class="p-3">Kategori</th><th class="p-3">Kegiatan</th><th class="p-3 col-money">Bruto</th><th class="p-3 col-money">Pajak</th><th class="p-3 col-money">Netto</th><th class="p-3">Aksi</th></tr></thead>
+                <tbody id="tblTransaksiAdmin" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel REKAP (Bendahara + Superadmin) -->
+        <div id="panelRekap" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">📊 Rekap &amp; Kompilasi Penggunaan Anggaran</h3>
+          <p class="text-xs text-slate-500 mb-4">Semua angka dihitung otomatis dari data transaksi Bendahara.</p>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200"><p class="text-[10px] text-slate-500 uppercase">Total Transaksi</p><p id="rekapCount" class="text-2xl font-black text-brand">0</p></div>
+            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200"><p class="text-[10px] text-slate-500 uppercase">Total Bruto</p><p id="rekapBruto" class="text-2xl font-black text-amber-600">Rp 0</p></div>
+            <div class="bg-red-50/60 p-4 rounded-xl border border-red-200"><p class="text-[10px] text-slate-500 uppercase">Total Pajak</p><p id="rekapPajak" class="text-2xl font-black text-red-600">Rp 0</p></div>
+            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200"><p class="text-[10px] text-slate-500 uppercase">Total Netto</p><p id="rekapNetto" class="text-2xl font-black text-emerald-600">Rp 0</p></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" id="rekapPerKategori"></div>
+
+          <div class="overflow-x-auto text-xs rounded-2xl border border-slate-200 bg-white/70">
+            <table class="w-full text-left">
+              <thead><tr class="bg-slate-100/80 border-b text-slate-600 font-bold"><th class="p-3">Kategori</th><th class="p-3 col-money">Pagu</th><th class="p-3 col-money">Terpakai (Netto)</th><th class="p-3 col-money">Sisa</th><th class="p-3">%</th></tr></thead>
+              <tbody id="tblRekapPagu" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel USER MANAGEMENT -->
+        <div id="panelUserManagement" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">👥 Manajemen Hak Akses Pengguna</h3>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 text-xs">
+            <form onsubmit="buatUserBaru(event)" class="lg:col-span-5 bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60 space-y-3">
+              <h4 class="font-bold text-sm text-brand">Tambah Pengguna Baru</h4>
+              <div><label class="block font-bold text-slate-700 mb-1">Username</label><input type="text" id="cfgNewUser" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Kata Sandi</label><input type="password" id="cfgNewPass" minlength="6" class="w-full border rounded-xl p-2.5 bg-white" required></div>
+              <div><label class="block font-bold text-slate-700 mb-1">Role</label>
+                <select id="cfgNewRole" class="w-full border rounded-xl p-2.5 bg-white">
+                  <option value="Operator Desa">Operator Pelayanan</option>
+                  <option value="Bendahara Desa">Bendahara Desa</option>
+                  <option value="Superadmin">Superadmin</option>
+                </select>
+              </div>
+              <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl shadow-md">Daftarkan Akun</button>
+            </form>
+            <div class="lg:col-span-7 border border-slate-200/60 rounded-2xl overflow-x-auto bg-white/80 shadow-inner">
+              <table class="w-full text-left">
+                <thead><tr class="bg-slate-100 border-b text-slate-600 font-bold"><th class="p-3">Username</th><th class="p-3">Role</th><th class="p-3 w-16 text-center">Hapus</th></tr></thead>
+                <tbody id="tableUserLogs" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel CONFIG -->
+        <div id="panelApi" class="dashboard-panel glass-card p-6 rounded-3xl shadow-2xl">
+          <h3 class="text-base font-black text-slate-900 border-b border-slate-200/80 pb-3 mb-6">🔌 Integrasi Database &amp; WhatsApp Gateway</h3>
+          <form onsubmit="simpanApiGlobal(event)" class="space-y-4 max-w-2xl text-xs">
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 mb-4">
+              <h4 class="font-bold text-amber-800 mb-2">🔒 Keamanan Database Terpusat (GitHub Secrets)</h4>
+              <p class="text-amber-700 leading-relaxed">Koneksi Database diatur otomatis via variabel <code class="bg-amber-100 px-1 rounded">window.__DB_CONFIG__</code> saat deploy GitHub Pages. Anda bisa override di bawah ini untuk pengujian.</p>
+            </div>
+            <div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-200/60 mb-4">
+              <h4 class="font-bold text-brand mb-2">Supabase</h4>
+              <div class="space-y-2">
+                <input type="text" id="cfgSupabaseUrl" placeholder="https://xyz.supabase.co" class="w-full border rounded-xl p-2.5 bg-white">
+                <input type="text" id="cfgSupabaseKey" placeholder="eyJhbGciOi..." class="w-full border rounded-xl p-2.5 bg-white">
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Provider Database Aktif</label>
+              <select id="cfgDbProvider" class="w-full border rounded-xl p-2.5 bg-white">
+                <option value="supabase">Supabase</option>
+                <option value="firebase">Firebase</option>
+                <option value="local">LocalStorage (default dev)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">API Key WA Gateway (Opsional)</label>
+              <p class="text-[10px] text-slate-500 mb-2">Biarkan kosong jika ingin tombol 'Selesai' membuka WhatsApp Web untuk operator.</p>
+              <input type="text" id="cfgApiWa" placeholder="Token API Fonnte / Wablas" class="w-full border rounded-xl p-3 bg-white">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Google Maps Embed (URL iframe src)</label>
+              <textarea id="cfgMaps" rows="3" class="w-full border rounded-xl p-3 bg-white"></textarea>
+            </div>
+            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 px-8 rounded-xl text-xs transition shadow-lg">💾 Simpan Konfigurasi Web</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING CHATBOT -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div id="chatBox" class="hidden w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden mb-4" role="dialog">
+      <div class="bg-brand p-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 bg-amber-500 rounded-full flex items-center justify-center font-bold text-slate-900">🤖</div>
+          <div><h4 class="text-sm font-bold">Asisten Virtual Desa</h4><p class="text-[10px] text-emerald-300">Online</p></div>
+        </div>
+        <button onclick="toggleChat()" class="text-white/70 hover:text-white text-xs">Tutup</button>
+      </div>
+      <div class="p-4 h-64 overflow-y-auto bg-gray-50 space-y-3 text-xs" id="chatLogs">
+        <div class="bg-white border border-gray-100 p-3 rounded-xl max-w-[85%] text-slate-800 shadow-sm">Halo! 👋 Ada yang bisa saya bantu?</div>
+      </div>
+      <form onsubmit="event.preventDefault(); kirimPesanChat();" class="p-3 bg-white border-t flex gap-2">
+        <input type="text" id="chatInput" placeholder="Ketik pertanyaan..." class="flex-1 text-xs border rounded-xl px-3 focus:outline-none">
+        <button type="submit" class="bg-brand text-white px-4 py-2 rounded-xl text-xs font-bold">Kirim</button>
+      </form>
+    </div>
+    <button id="chatFab" onclick="toggleChat()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition border-2 border-white text-2xl">💬</button>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- APLIKASI UTAMA                                             -->
+  <!-- ============================================================ -->
+  <script>
+  (function(){
+    'use strict';
+
+    // ----------------- KONFIGURASI TERPUSAT -----------------
+    const PLACEHOLDER = '___';
+    const ACTIVE_PROVIDER = (window.__DB_CONFIG__ && window.__DB_CONFIG__.provider) || 'local';
+    const SUPA_URL  = (window.__DB_CONFIG__ && window.__DB_CONFIG__.supabaseUrl)  || '';
+    const SUPA_KEY  = (window.__DB_CONFIG__ && window.__DB_CONFIG__.supabaseKey) || '';
+    const FIRE_CFG  = (window.__DB_CONFIG__ && window.__DB_CONFIG__.firebase)     || null;
+
+    let activeProvider = ACTIVE_PROVIDER;
+    let supabase = null, firebaseDb = null;
+
+    try {
+      if (activeProvider === 'supabase' && window.supabase && SUPA_URL && SUPA_KEY) {
+        supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+      } else if (activeProvider === 'firebase' && window.firebase && FIRE_CFG) {
+        firebase.initializeApp(FIRE_CFG);
+        firebaseDb = firebase.database();
+      }
+    } catch(e){ console.warn('DB init error', e); }
+
+    // ----------------- STATE LOKAL -----------------
+    const DEFAULT_DESIGN = {
+      namaDesa:'BAGU', waAdmin:'08123456789', kecamatan:'Pringgarata', kabupaten:'Lombok Tengah',
+      alamatLengkap:'Dusun Mesaleng, Desa Bagu, Kec. Pringgarata, Lombok Tengah',
+      headlineNews:'Selamat Datang di Pelayanan Administrasi Digital Terpadu.',
+      visi:'Mewujudkan pelayanan desa yang transparan dan akuntabel berbasis digital.',
+      misi1:'Digitalisasi sistem administrasi desa.', misi2:'Pengelolaan keuangan APBDes transparan.', misi3:'Akses surat menyurat cepat via WhatsApp.',
+      kades:'H. Muhammad Zaini, S.AP', fotoKades:'', pesanKades:'Mari bersama wujudkan pelayanan masyarakat yang transparan.',
+      sekdes:'Ahmad Fudhali, M.Tr.Kep', operator:'Riamah S.Tr.Kep', kaur:'Muhammad Fathullah', bendahara:'— (belum diisi)',
+      logoUrl:'', faviconUrl:'',
+      statPenduduk:'4.500', statDusun:'8', statLuas:'12 km²',
+      apbdesTotal:'1500000000', apbdesVal1:'825000000', apbdesPct1:'55',
+      apbdesVal2:'375000000', apbdesPct2:'25', apbdesVal3:'300000000', apbdesPct3:'20',
+      addTotal:'850000000', addVal1:'510000000', addPct1:'60', addVal2:'340000000', addPct2:'40', addPctKelOp:'40', addPctInsentif:'60',
+      apiWaBisnis:'', mapsEmbed:'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15774.20573981882!2d116.24151705!3d-8.73397945!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dc6990263660bf5%3A0x6bfe7bb1db8650df!2sBagu%2C%20Pringgarata%2C%20Central%20Lombok%20Regency%2C%20West%20Nusa%20Tenggara!5e0!3m2!1sen!2sid!4v1710000000000!5m2!1sen!2sid',
+      antreanSurat:[], arsipSuratWarga:[], transaksi:[]
+    };
+
+    const DATA_USERS_DEFAULT = [
+      { username:'admin',    passHash:'Admin2026!',  role:'Superadmin' },
+      { username:'operator', passHash:'operator123', role:'Operator Desa' },
+      { username:'bendahara',passHash:'bendahara123',role:'Bendahara Desa' }
+    ];
+
+    let DATA_IDENTITAS = JSON.parse(JSON.stringify(DEFAULT_DESIGN));
+    let DATA_USERS = JSON.parse(JSON.stringify(DATA_USERS_DEFAULT));
+    let CURRENT_USER = null;
+
+    function loadLocal(){
+      try {
+        const idn = localStorage.getItem('data_identitas_desa');
+        if (idn) DATA_IDENTITAS = Object.assign(DATA_IDENTITAS, JSON.parse(idn));
+        const usr = localStorage.getItem('data_users_desa');
+        if (usr) DATA_USERS = JSON.parse(usr);
+        const sess = localStorage.getItem('sess_user_desa');
+        if (sess) CURRENT_USER = JSON.parse(sess);
+      } catch(e){}
+    }
+    function saveIdentitas(){ localStorage.setItem('data_identitas_desa', JSON.stringify(DATA_IDENTITAS)); }
+    function saveUsers(){ localStorage.setItem('data_users_desa', JSON.stringify(DATA_USERS)); }
+
+    // ----------------- UTILITAS -----------------
+    function $(id){ return document.getElementById(id); }
+    function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+    function formatRp(n){ if (n==null || isNaN(n)) return 'Rp 0'; return 'Rp ' + Number(n).toLocaleString('id-ID'); }
+    function parseRpInput(str){ if(!str) return 0; return Number(String(str).replace(/[^0-9]/g,''))||0; }
+
+    function tampilkanNotifikasi(pesan, jenis='info'){
+      const styles = { sukses:'bg-emerald-500', gagal:'bg-red-500', info:'bg-brand', warn:'bg-amber-500 text-slate-900' };
+      const icon = { sukses:'✅', gagal:'❌', info:'ℹ️', warn:'⚠️' }[jenis] || 'ℹ️';
+      const el = document.createElement('div');
+      el.className = `${styles[jenis]||styles.info} text-white font-bold text-xs px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-2 translate-y-4 opacity-0 transition-all duration-300`;
+      el.innerHTML = `<span>${icon}</span><span>${escapeHtml(pesan)}</span>`;
+      $('toastArea').appendChild(el);
+      requestAnimationFrame(()=>el.classList.remove('translate-y-4','opacity-0'));
+      setTimeout(()=>{ el.classList.add('translate-y-4','opacity-0'); setTimeout(()=>el.remove(),300); },3800);
+    }
+
+    function konfirmasi(pesan){
+      return new Promise(resolve=>{
+        const overlay = document.createElement('div');
+        overlay.className='fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+        overlay.innerHTML = `<div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-xs"><p class="text-sm font-bold text-slate-800 mb-5">${escapeHtml(pesan)}</p><div class="flex gap-3 justify-end"><button data-act="cancel" class="text-slate-500 font-bold px-4 py-2">Batal</button><button data-act="ok" class="bg-red-500 text-white font-bold px-4 py-2 rounded-xl">Ya, Lanjutkan</button></div></div>`;
+        overlay.addEventListener('click',e=>{ if(e.target===overlay){overlay.remove(); resolve(false);} });
+        overlay.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ const v=b.dataset.act==='ok'; overlay.remove(); resolve(v); }));
+        document.body.appendChild(overlay);
+      });
+    }
+
+    function formatNomorWA(n){ let c=(n||'').replace(/[^0-9]/g,''); if(c.startsWith('0')) c='62'+c.substring(1); return c; }
+
+    function isRole(...roles){ return CURRENT_USER && roles.includes(CURRENT_USER.role); }
+
+    // ----------------- LOGO & FAVICON DINAMIS -----------------
+    function terapkanLogo(d){
+      const url = d.logoUrl || '';
+      ['logoHeader','footerLogoImg','previewLogoImg','popImgKades'].forEach(id=>{
+        const el = $(id); if(!el) return;
+        if (url) { el.src = url; el.classList.remove('hidden'); }
+        else if (id==='popImgKades') { if(d.fotoKades){el.src=d.fotoKades;} }
+      });
+      const logoBulat = $('logoBulat'); const logoText = $('footerLogoBulat');
+      if (url) { if(logoBulat) logoBulat.style.display='none'; if(logoText) logoText.style.display='none'; }
+      else { if(logoBulat) logoBulat.style.display=''; if(logoText) logoText.style.display=''; }
+
+      // favicon
+      const fav = $('faviconLink');
+      if (d.faviconUrl || d.logoUrl) {
+        const target = d.faviconUrl || d.logoUrl;
+        fav.href = target;
+        fav.type = /\.svg$/i.test(target) ? 'image/svg+xml' : 'image/'+(target.split('.').pop());
+      }
+    }
+
+    // ----------------- RENDER PUBLIK -----------------
+    function renderIdentitasKeTampilan(){
+      const d = DATA_IDENTITAS;
+      const t = `Website Resmi Desa ${d.namaDesa} - Kecamatan ${d.kecamatan}`;
+      document.title = t; $('siteTitle').innerText = t;
+
+      $('navNamaDesa').innerText = d.namaDesa;
+      $('heroJudulDesa').innerText = "Masyarakat Desa " + d.namaDesa;
+      $('heroDeskripsi').innerText = `Komitmen Pemerintah Desa ${d.namaDesa} dalam mewujudkan birokrasi yang cepat, transparan, dan efisien.`;
+      $('heroWilayah').innerText = `Kecamatan ${d.kecamatan}, ${d.kabupaten}`;
+      $('tickerHeadline').innerText = d.headlineNews || '';
+
+      $('statPenduduk').innerText = d.statPenduduk || '—';
+      $('statDusun').innerText = d.statDusun || '—';
+      $('statLuas').innerText = d.statLuas || '—';
+
+      $('footerNamaDesa').innerText = d.namaDesa;
+      $('footerTextAlamat').innerText = d.alamatLengkap;
+
+      $('txtVisi').innerText = '"'+(d.visi||'')+'"';
+      $('txtMisi1').innerText = d.misi1; $('txtMisi2').innerText = d.misi2; $('txtMisi3').innerText = d.misi3;
+
+      $('strNamaKades').innerText = d.kades;
+      $('popNamaKades').innerText = d.kades;
+      $('popPesanKades').innerText = '"' + (d.pesanKades||'') + '"';
+
+      $('strNamaSekdes').innerText = d.sekdes || '-';
+      $('strNamaOperator').innerText = d.operator || '-';
+      $('strNamaKaur').innerText = d.kaur || '-';
+      $('strNamaBendahara').innerText = d.bendahara || '-';
+
+      $('lblTotalApb').innerText = formatRp(d.apbdesTotal);
+      $('lblTotalAdd').innerText = formatRp(d.addTotal);
+
+      if (d.fotoKades) { $('strFotoKades').src = d.fotoKades; $('strFotoKades').classList.remove('hidden'); $('strIkonKades').classList.add('hidden'); }
+      else { $('strFotoKades').classList.add('hidden'); $('strIkonKades').classList.remove('hidden'); }
+
+      if (d.fotoKades) $('popImgKades').src = d.fotoKades;
+
+      // maps
+      if (d.mapsEmbed) $('mapsIframe').src = d.mapsEmbed;
+
+      terapkanLogo(d);
+      isiFormAdminOtomatis();
+      renderRealisasiPublik();
+    }
+
+    function renderRealisasiPublik(){
+      const trx = Array.isArray(DATA_IDENTITAS.transaksi) ? DATA_IDENTITAS.transaksi : [];
+      const tot = trx.reduce((a,t)=>{ a.bruto += Number(t.bruto||0); a.pajak += Number(t.pajak||0); a.netto += Number(t.netto||0); return a; }, {bruto:0,pajak:0,netto:0});
+      $('realCount').innerText = trx.length;
+      $('realBruto').innerText = formatRp(tot.bruto);
+      $('realPajak').innerText = formatRp(tot.pajak);
+      $('realNetto').innerText = formatRp(tot.netto);
+
+      const paguApb = Number(DATA_IDENTITAS.apbdesTotal) || 0;
+      const paguAdd = Number(DATA_IDENTITAS.addTotal) || 0;
+      const terApb = trx.filter(t=>t.kategori && t.kategori.startsWith('APBDes')).reduce((a,t)=>a+Number(t.netto||0),0);
+      const terAdd = trx.filter(t=>t.kategori && t.kategori.startsWith('ADD')).reduce((a,t)=>a+Number(t.netto||0),0);
+      $('sisaApbdesText').innerText = formatRp(paguApb - terApb);
+      $('sisaAddText').innerText   = formatRp(paguAdd - terAdd);
+
+      const tbl = $('tblTransaksiPublik');
+      tbl.innerHTML='';
+      if (!trx.length) { tbl.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Belum ada transaksi penggunaan anggaran.</td></tr>`; return; }
+      trx.slice().sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')).forEach(t=>{
+        tbl.insertAdjacentHTML('beforeend', `<tr><td class="p-3">${escapeHtml(t.tanggal)}</td><td class="p-3">${escapeHtml(t.kategori)}</td><td class="p-3">${escapeHtml(t.uraian)}</td><td class="p-3 col-money">${formatRp(t.bruto)}</td><td class="p-3 col-money text-amber-400">${formatRp(t.pajak)}</td><td class="p-3 col-money text-emerald-400">${formatRp(t.netto)}</td><td class="p-3">${escapeHtml(t.bendahara || '-')}</td></tr>`);
+      });
+    }
+
+    function isiFormAdminOtomatis(){
+      const map = {
+        cfgNamaDesa:'namaDesa', cfgWaAdmin:'waAdmin', cfgKecamatan:'kecamatan', cfgKabupaten:'kabupaten',
+        cfgAlamat:'alamatLengkap', cfgHeadline:'headlineNews',
+        cfgStatPenduduk:'statPenduduk', cfgStatDusun:'statDusun', cfgStatLuas:'statLuas',
+        cfgVisi:'visi', cfgMisi1:'misi1', cfgMisi2:'misi2', cfgMisi3:'misi3',
+        cfgKades:'kades', cfgFotoKades:'fotoKades', cfgPesanKades:'pesanKades',
+        cfgSekdes:'sekdes', cfgOperator:'operator', cfgKaur:'kaur', cfgBendahara:'bendahara',
+        cfgApbTotal:'apbdesTotal', cfgApbVal1:'apbdesVal1', cfgApbPct1:'apbdesPct1',
+        cfgAddTotal:'addTotal', cfgApiWa:'apiWaBisnis', cfgMaps:'mapsEmbed',
+        cfgLogoUrl:'logoUrl', cfgApbPct2:'addPctKelOp', cfgApbPct3:'addPctInsentif'
+      };
+      Object.entries(map).forEach(([elId,key])=>{
+        const el = $(elId); if (el && DATA_IDENTITAS[key] != null) el.value = DATA_IDENTITAS[key];
+      });
+      if ($('cfgSupabaseUrl')) $('cfgSupabaseUrl').value = SUPA_URL;
+      if ($('cfgSupabaseKey')) $('cfgSupabaseKey').value = SUPA_KEY;
+      if ($('cfgDbProvider'))  $('cfgDbProvider').value  = activeProvider;
+
+      // preview logo
+      if (DATA_IDENTITAS.logoUrl) {
+        $('previewLogoImg').src = DATA_IDENTITAS.logoUrl;
+        $('previewLogoImg').classList.remove('hidden');
+        $('previewLogoPh').classList.add('hidden');
+      }
+    }
+
+    // ----------------- SIMPAN DATA (LOCAL + SUPABASE/FIREBASE OPSIONAL) -----------------
+    async function simpanData(silent=false){
+      saveIdentitas();
+      try {
+        if (activeProvider === 'supabase' && supabase) {
+          await supabase.from('pengaturan_desa').upsert({ id:1, config: DATA_IDENTITAS, updated_at: new Date().toISOString() });
+        } else if (activeProvider === 'firebase' && firebaseDb) {
+          await firebaseDb.ref('pengaturan_desa/1').set({ config: DATA_IDENTITAS, updated_at: new Date().toISOString() });
+        }
+      } catch(e){ console.warn('Cloud sync warning:', e); }
+      if (!silent) tampilkanNotifikasi('Data berhasil disimpan!','sukses');
+      renderIdentitasKeTampilan();
+    }
+
+    async function simpanIdentitasGlobal(e){
+      e.preventDefault();
+      Object.assign(DATA_IDENTITAS, {
+        namaDesa: $('cfgNamaDesa').value.trim().toUpperCase(),
+        waAdmin: $('cfgWaAdmin').value.trim(),
+        kecamatan: $('cfgKecamatan').value.trim(),
+        kabupaten: $('cfgKabupaten').value.trim(),
+        alamatLengkap: $('cfgAlamat').value.trim(),
+        headlineNews: $('cfgHeadline').value.trim(),
+        statPenduduk: $('cfgStatPenduduk').value.trim(),
+        statDusun: $('cfgStatDusun').value.trim(),
+        statLuas: $('cfgStatLuas').value.trim()
+      });
+      await simpanData();
+    }
+    window.simpanIdentitasGlobal = simpanIdentitasGlobal;
+
+    async function simpanKontenGlobal(e){
+      e.preventDefault();
+      // logo upload (file -> DataURL)
+      const fileEl = $('cfgLogoFile');
+      if (fileEl && fileEl.files && fileEl.files[0]) {
+        const f = fileEl.files[0];
+        if (f.size > 600*1024) {
+          tampilkanNotifikasi('Ukuran logo terlalu besar (max ~500KB untuk DataURL).','warn');
+        } else {
+          DATA_IDENTITAS.logoUrl = await fileToDataURL(f);
+          DATA_IDENTITAS.faviconUrl = DATA_IDENTITAS.logoUrl; // gunakan sama
+        }
+      }
+      const urlEl = $('cfgLogoUrl');
+      if (urlEl && urlEl.value.trim()) {
+        DATA_IDENTITAS.logoUrl = urlEl.value.trim();
+        DATA_IDENTITAS.faviconUrl = DATA_IDENTITAS.logoUrl;
+      }
+
+      Object.assign(DATA_IDENTITAS, {
+        visi: $('cfgVisi').value.trim(),
+        misi1: $('cfgMisi1').value.trim(), misi2: $('cfgMisi2').value.trim(), misi3: $('cfgMisi3').value.trim(),
+        kades: $('cfgKades').value.trim(),
+        fotoKades: $('cfgFotoKades').value.trim(),
+        pesanKades: $('cfgPesanKades').value.trim(),
+        sekdes: $('cfgSekdes').value.trim(), operator: $('cfgOperator').value.trim(),
+        kaur: $('cfgKaur').value.trim(), bendahara: $('cfgBendahara')?.value.trim()
+      });
+      await simpanData();
+    }
+    window.simpanKontenGlobal = simpanKontenGlobal;
+
+    async function simpanAnggaranGlobal(e){
+      e.preventDefault();
+      Object.assign(DATA_IDENTITAS, {
+        apbdesTotal: parseRpInput($('cfgApbTotal').value).toString(),
+        apbdesVal1:  parseRpInput($('cfgApbVal1').value).toString(),
+        apbdesPct1:  $('cfgApbPct1').value,
+        addTotal:    parseRpInput($('cfgAddTotal').value).toString(),
+        addPctKelOp: $('cfgApbPct2')?.value || '40',
+        addPctInsentif: $('cfgApbPct3')?.value || '60'
+      });
+      await simpanData();
+      tampilkanNotifikasi('Pagu anggaran disimpan.','sukses');
+    }
+    window.simpanAnggaranGlobal = simpanAnggaranGlobal;
+
+    async function simpanApiGlobal(e){
+      e.preventDefault();
+      DATA_IDENTITAS.apiWaBisnis = $('cfgApiWa').value.trim();
+      DATA_IDENTITAS.mapsEmbed = $('cfgMaps').value.trim();
+      await simpanData(false);
+    }
+    window.simpanApiGlobal = simpanApiGlobal;
+
+    function fileToDataURL(file){
+      return new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    function clearLogo(){
+      DATA_IDENTITAS.logoUrl=''; DATA_IDENTITAS.faviconUrl='';
+      simpanData(true);
+      $('previewLogoImg').classList.add('hidden');
+      $('previewLogoPh').classList.remove('hidden');
+      $('previewLogoImg').src = '';
+      $('cfgLogoFile').value='';
+      $('cfgLogoUrl').value='';
+      tampilkanNotifikasi('Logo custom dihapus, kembali ke default.','info');
+    }
+    window.clearLogo = clearLogo;
+
+    // ----------------- AUTH -----------------
+    function handleLogin(e){
+      e.preventDefault();
+      const user = $('username').value.toLowerCase().trim();
+      const pass = $('password').value;
+      const found = DATA_USERS.find(u => u.username === user && u.passHash === pass);
+      if (!found) return tampilkanNotifikasi('Username / Password salah!','gagal');
+
+      CURRENT_USER = { username: found.username, role: found.role };
+      localStorage.setItem('sess_user_desa', JSON.stringify(CURRENT_USER));
+
+      $('adminUserSession').innerText = CURRENT_USER.username.toUpperCase();
+      $('roleBadge').innerText = CURRENT_USER.role;
+      $('roleBadge').className = 'role-pill border ' + (
+        CURRENT_USER.role==='Superadmin' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+        CURRENT_USER.role==='Bendahara Desa' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+        'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      );
+      $('dashTitle').innerText = CURRENT_USER.role==='Bendahara Desa' ? 'Panel Bendahara' : 'Panel Admin';
+      // sembunyikan menu sesuai role
+      document.querySelectorAll('#adminMenus button[data-roles]').forEach(btn=>{
+        const roles = btn.dataset.roles.split(',').map(s=>s.trim());
+        btn.style.display = roles.includes(CURRENT_USER.role) ? '' : 'none';
+      });
+
+      toggleModal('loginModal');
+      $('mainWebsite').classList.add('hidden');
+      $('dashboardUtama').classList.remove('hidden');
+      $('dashboardUtama').classList.add('flex');
+
+      // AUTO REDIRECT: bendahara -> input transaksi; lainnya -> antran surat
+      if (CURRENT_USER.role === 'Bendahara Desa') {
+        const btn = document.querySelector('#btnMenuTransaksi');
+        switchPanel('panelTransaksi', btn || null);
+      } else {
+        const btn = document.querySelector('#adminMenus button');
+        switchPanel('panelSurat', btn);
+      }
+      renderAntreanSuratAdmin();
+      renderTransaksiAdmin();
+      renderRekap();
+      tampilkanNotifikasi(`Selamat datang, ${CURRENT_USER.username}!`, 'sukses');
+    }
+    window.handleLogin = handleLogin;
+
+    function logoutAdmin(){
+      konfirmasi('Keluar dari dashboard?').then(ok=>{ if (ok){ localStorage.removeItem('sess_user_desa'); location.reload(); } });
+    }
+    window.logoutAdmin = logoutAdmin;
+
+    // ----------------- SURAT ONLINE -----------------
+    async function kirimPengajuanSurat(e){
+      e.preventDefault();
+      const jenis = $('jenisSurat').value;
+      const nik = $('nik').value.trim();
+      const nama = $('nama').value.trim();
+      const wa = $('whatsapp').value.trim();
+      const alamat = $('alamat').value.trim();
+      const keperluan = $('keperluan').value.trim();
+      if (!jenis) return tampilkanNotifikasi('Pilih jenis surat','warn');
+      if (!/^\d{16}$/.test(nik)) return tampilkanNotifikasi('NIK harus 16 digit angka','warn');
+      if (nama.length < 3) return tampilkanNotifikasi('Nama minimal 3 karakter','warn');
+      if (!wa) return tampilkanNotifikasi('Nomor WhatsApp wajib diisi','warn');
+      const btn = $('btnSubmitSurat'); btn.disabled = true;
+      if (!Array.isArray(DATA_IDENTITAS.antreanSurat)) DATA_IDENTITAS.antreanSurat = [];
+      DATA_IDENTITAS.antreanSurat.push({ jenis,nik,nama,wa,alamat,keperluan, status:'Diterima - Menunggu Proses', tanggal:new Date().toISOString() });
+      try { await simpanData(true); e.target.reset(); tampilkanNotifikasi('Pengajuan berhasil dikirim!','sukses'); }
+      catch(err){ tampilkanNotifikasi('Gagal menyimpan: '+err.message,'gagal'); }
+      finally { btn.disabled = false; }
+    }
+    window.kirimPengajuanSurat = kirimPengajuanSurat;
+
+    function renderAntreanSuratAdmin(){
+      const tbody = $('tableSuratMasuk');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      const list = DATA_IDENTITAS.antreanSurat || [];
+      if (!list.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">Tidak ada antrean.</td></tr>`; return; }
+      list.forEach((s,i)=>{
+        tbody.insertAdjacentHTML('beforeend', `<tr class="hover:bg-slate-50/80 text-xs"><td class="p-3.5"><p class="font-bold">${escapeHtml(s.nama)}</p><p class="font-mono text-slate-400">${escapeHtml(s.nik)}</p></td><td class="p-3.5 font-semibold text-blue-700">${escapeHtml(s.jenis)}</td><td class="p-3.5 text-slate-500">${escapeHtml(s.keperluan)}</td><td class="p-3.5 font-mono font-bold">${escapeHtml(s.wa)}</td><td class="p-3.5 text-center"><div class="flex gap-1.5 justify-center"><button data-i="${i}" class="btn-selesai bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-lg text-[10px]">Selesai + WA</button><button data-i="${i}" class="btn-hapus bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-2 rounded-lg text-[10px]">✕</button></div></td></tr>`);
+      });
+      tbody.querySelectorAll('.btn-selesai').forEach(b=>b.addEventListener('click',()=>selesaikanSurat(parseInt(b.dataset.i,10))));
+      tbody.querySelectorAll('.btn-hapus').forEach(b=>b.addEventListener('click',()=>hapusAntrean(parseInt(b.dataset.i,10))));
+    }
+    window.renderAntreanSuratAdmin = renderAntreanSuratAdmin;
+
+    function selesaikanSurat(idx){
+      const s = DATA_IDENTITAS.antreanSurat[idx]; if(!s) return;
+      if (!Array.isArray(DATA_IDENTITAS.arsipSuratWarga)) DATA_IDENTITAS.arsipSuratWarga = [];
+      DATA_IDENTITAS.arsipSuratWarga.push({ nik:s.nik, jenis:s.jenis, fileName:`${s.jenis}_${s.nama}.pdf`, urlDownload:`#download-${s.nik}`, tanggalTerbit:new Date().toISOString() });
+      DATA_IDENTITAS.antreanSurat.splice(idx,1);
+      simpanData();
+      const msg = `*PELAYANAN DESA ${DATA_IDENTITAS.namaDesa.toUpperCase()}*\n\nHalo *${s.nama}*, pengajuan ${s.jenis} Anda telah SELESAI. Silakan unduh di ${location.href}`;
+      const wa = formatNomorWA(s.wa);
+      window.open(`https://api.whatsapp.com/send?phone=${wa}&text=${encodeURIComponent(msg)}`,'_blank','noopener');
+    }
+    function hapusAntrean(idx){
+      konfirmasi('Hapus antrean ini?').then(ok=>{ if(ok){ DATA_IDENTITAS.antreanSurat.splice(idx,1); simpanData(); } });
+    }
+
+    function cekDownloadSuratWarga(){
+      const nik = $('inputNikDownload').value.trim();
+      const div = $('hasilDownloadSurat');
+      if (!/^\d{16}$/.test(nik)) return tampilkanNotifikasi('NIK harus 16 digit','warn');
+      const arsip = DATA_IDENTITAS.arsipSuratWarga || [];
+      const b = arsip.find(x=>x.nik === nik);
+      if (b) {
+        div.classList.remove('hidden');
+        $('h4JudulDownloadSurat').innerText = b.jenis;
+        $('txtNamaFileDownload').innerText = b.fileName;
+        $('btnLinkDownloadSurat').href = b.urlDownload;
+      } else { div.classList.add('hidden'); tampilkanNotifikasi('Surat belum diproses.','warn'); }
+    }
+    window.cekDownloadSuratWarga = cekDownloadSuratWarga;
+
+    // ----------------- TRANSAKSI BENDAHARA -----------------
+    function totalPajak(bruto, ppn, pph, p Dand){
+      return Math.round(bruto * ( (Number(ppn)||0) + (Number(pph)||0) + (Number(pd)||0) ) / 100);
+    }
+    function hitungPajakPreview(){
+      const bruto = Number($('trxBruto').value)||0;
+      const ppn = Number($('trxPpnPct').value)||0;
+      const pph = Number($('trxPphPct').value)||0;
+      const pd  = Number($('trxPajakDaerahPct').value)||0;
+      const pajak = Math.round(bruto*(ppn+pph+pd)/100);
+      const netto = bruto - pajak;
+      $('previewPajak').innerText = formatRp(pajak);
+      $('previewNetto').innerText = formatRp(netto);
+
+      // Hitung sisa pagu kategori
+      const kat = $('trxKategori').value;
+      let pagu = 0;
+      if (kat === 'APBDes - Infra') pagu = Number(DATA_IDENTITAS.apbdesVal1)||0;
+      else if (kat === 'APBDes - Pemberdayaan') pagu = Number(DATA_IDENTITAS.apbdesVal2)||0;
+      else if (kat === 'APBDes - Pemerintahan') pagu = Number(DATA_IDENTITAS.apbdesVal3)||0;
+      else if (kat && kat.startsWith('ADD')) pagu = Number(DATA_IDENTITAS.addTotal)||0;
+
+      const trx = DATA_IDENTITAS.transaksi || [];
+      const terpakai = trx.filter(t=>t.kategori===kat).reduce((a,t)=>a+Number(t.netto||0),0);
+      const sisa = pagu - terpakai;
+      $('previewSisa').innerText = pagu ? (formatRp(sisa - netto) + ` (dari ${formatRp(pagu)})`) : '—';
+    }
+    window.hitungPajakPreview = hitungPajakPreview;
+
+    async function submitTransaksi(e){
+      e.preventDefault();
+      if (!isRole('Superadmin','Bendahara Desa')) return tampilkanNotifikasi('Hanya Superadmin / Bendahara yang boleh input.','gagal');
+      const bruto = Number($('trxBruto').value);
+      const ppn = Number($('trxPpnPct').value)||0;
+      const pph = Number($('trxPphPct').value)||0;
+      const pd  = Number($('trxPajakDaerahPct').value)||0;
+      if (!bruto || bruto<=0) return tampilkanNotifikasi('Isi nilai Bruto yang valid.','warn');
+      const pajak = Math.round(bruto*(ppn+pph+pd)/100);
+      const netto  = bruto - pajak;
+
+      if (!Array.isArray(DATA_IDENTITAS.transaksi)) DATA_IDENTITAS.transaksi = [];
+      DATA_IDENTITAS.transaksi.push({
+        id:'TRX'+Date.now(),
+        tanggal: $('trxTanggal').value || new Date().toISOString().substring(0,10),
+        kategori: $('trxKategori').value,
+        uraian: $('trxUraian').value.trim(),
+        bruto, ppn, pph, pajakDaerah: pd,
+        pajak, netto,
+        penerima: $('trxPenerima').value.trim(),
+        catatan: $('trxCatatan').value.trim(),
+        bendahara: CURRENT_USER?.username || 'unknown',
+        timestamp: new Date().toISOString()
+      });
+
+      await simpanData(false);
+      e.target.reset();
+      $('trxPpnPct').value=0; $('trxPphPct').value=0; $('trxPajakDaerahPct').value=0;
+      hitungPajakPreview();
+      renderTransaksiAdmin(); renderRekap();
+    }
+    window.submitTransaksi = submitTransaksi;
+
+    function renderTransaksiAdmin(){
+      const tbody = $('tblTransaksiAdmin'); if (!tbody) return;
+      tbody.innerHTML = '';
+      const trx = (DATA_IDENTITAS.transaksi || []).slice().sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
+      if (!trx.length) { tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">Belum ada transaksi.</td></tr>`; return; }
+      trx.forEach((t,i)=>{
+        tbody.insertAdjacentHTML('beforeend', `<tr class="hover:bg-slate-50/80"><td class="p-3">${escapeHtml(t.tanggal)}</td><td class="p-3">${escapeHtml(t.kategori)}</td><td class="p-3">${escapeHtml(t.uraian)}</td><td class="p-3 col-money">${formatRp(t.bruto)}</td><td class="p-3 col-money text-amber-600">${formatRp(t.pajak)}</td><td class="p-3 col-money text-emerald-600 font-bold">${formatRp(t.netto)}</td><td class="p-3 text-center"><button data-id="${escapeHtml(t.id)}" class="btn-hapus-trx bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">Hapus</button></td></tr>`);
+      });
+      tbody.querySelectorAll('.btn-hapus-trx').forEach(b=>b.addEventListener('click',()=>hapusTransaksi(b.dataset.id)));
+    }
+    function hapusTransaksi(id){
+      if (!isRole('Superadmin')) return tampilkanNotifikasi('Hanya Superadmin yang boleh hapus transaksi.','gagal');
+      konfirmasi('Hapus transaksi ini? Tindakan tidak bisa dibatalkan.').then(ok=>{
+        if (ok){
+          DATA_IDENTITAS.transaksi = (DATA_IDENTITAS.transaksi||[]).filter(t=>t.id !== id);
+          simpanData();
+        }
+      });
+    }
+
+    function renderRekap(){
+      const trx = DATA_IDENTITAS.transaksi || [];
+      const tot = trx.reduce((a,t)=>{ a.bruto += Number(t.bruto||0); a.pajak += Number(t.pajak||0); a.netto += Number(t.netto||0); return a; }, {bruto:0,pajak:0,netto:0});
+      $('rekapCount').innerText = trx.length;
+      $('rekapBruto').innerText = formatRp(tot.bruto);
+      $('rekapPajak').innerText = formatRp(tot.pajak);
+      $('rekapNetto').innerText = formatRp(tot.netto);
+
+      // per kategori ringkasan
+      const cats = ['APBDes - Infra','APBDes - Pemberdayaan','APBDes - Pemerintahan','ADD - Insentif','ADD - Operasional'];
+      const box = $('rekapPerKategori'); box.innerHTML='';
+      cats.forEach(k=>{
+        const t = trx.filter(x=>x.kategori===k);
+        const tk = t.reduce((a,x)=>{ a.bruto += Number(x.bruto||0); a.pajak += Number(x.pajak||0); a.netto += Number(x.netto||0); return a; }, {bruto:0,pajak:0,netto:0});
+        box.insertAdjacentHTML('beforeend', `<div class="bg-white border rounded-xl p-4"><p class="text-[10px] text-slate-500 uppercase">${escapeHtml(k)}</p><p class="text-xs mt-1">${t.length} transaksi · <strong class="text-amber-600">${formatRp(tk.bruto)}</strong> bruto · <strong class="text-emerald-600">${formatRp(tk.netto)}</strong> netto</p></div>`);
+      });
+
+      // tabel pagu vs terpakai
+      const paguMap = {
+        'APBDes - Infra': Number(DATA_IDENTITAS.apbdesVal1)||0,
+        'APBDes - Pemberdayaan': Number(DATA_IDENTITAS.apbdesVal2)||0,
+        'APBDes - Pemerintahan': Number(DATA_IDENTITAS.apbdesVal3)||0,
+        'ADD (Total)': Number(DATA_IDENTITAS.addTotal)||0
+      };
+      const tbody = $('tblRekapPagu'); tbody.innerHTML='';
+      Object.entries(paguMap).forEach(([k,pagu])=>{
+        let terpakai=0;
+        if (k==='ADD (Total)') terpakai = trx.filter(x=>x.kategori.startsWith('ADD')).reduce((a,x)=>a+Number(x.netto||0),0);
+        else terpakai = trx.filter(x=>x.kategori===k).reduce((a,x)=>a+Number(x.netto||0),0);
+        const sisa = Math.max(pagu - terpakai, 0);
+        const pct = pagu ? Math.round(terpakai/pagu*100) : 0;
+        tbody.insertAdjacentHTML('beforeend', `<tr><td class="p-3">${escapeHtml(k)}</td><td class="p-3 col-money">${formatRp(pagu)}</td><td class="p-3 col-money text-amber-600">${formatRp(terpakai)}</td><td class="p-3 col-money text-emerald-600 font-bold">${formatRp(sisa)}</td><td class="p-3">${pct}%</td></tr>`);
+      });
+    }
+
+    // ----------------- USER MANAGEMENT -----------------
+    function buatUserBaru(e){
+      e.preventDefault();
+      if (!isRole('Superadmin')) return tampilkanNotifikasi('Hanya Superadmin','gagal');
+      const u = $('cfgNewUser').value.toLowerCase().trim();
+      const p = $('cfgNewPass').value;
+      const r = $('cfgNewRole').value;
+      if (DATA_USERS.find(x=>x.username===u)) return tampilkanNotifikasi('Username sudah ada','warn');
+      DATA_USERS.push({ username:u, passHash:p, role:r });
+      saveUsers();
+      e.target.reset();
+      renderUserLogs();
+      tampilkanNotifikasi('Pengguna ditambahkan','sukses');
+    }
+    window.buatUserBaru = buatUserBaru;
+
+    function renderUserLogs(){
+      const tbody = $('tableUserLogs'); if (!tbody) return;
+      tbody.innerHTML = '';
+      DATA_USERS.forEach((u,i)=>{
+        tbody.insertAdjacentHTML('beforeend', `<tr><td class="p-3 font-bold">${escapeHtml(u.username)}</td><td class="p-3"><span class="role-pill bg-slate-100 border border-slate-200 text-slate-700">${escapeHtml(u.role)}</span></td><td class="p-3 text-center"><button data-i="${i}" class="btn-hapus-user bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/30 text-[10px] font-bold px-2 py-1 rounded-lg">Hapus</button></td></tr>`);
+      });
+      tbody.querySelectorAll('.btn-hapus-user').forEach(b=>b.addEventListener('click',()=>{
+        if (!isRole('Superadmin')) return tampilkanNotifikasi('Hanya Superadmin','gagal');
+        const i = parseInt(b.dataset.i,10);
+        if (DATA_USERS[i].username === 'admin') return tampilkanNotifikasi('Akun admin bawaan tidak boleh dihapus','warn');
+        konfirmasi('Hapus pengguna '+DATA_USERS[i].username+'?').then(ok=>{ if(ok){ DATA_USERS.splice(i,1); saveUsers(); renderUserLogs(); } });
+      }));
+    }
+    window.renderUserLogs = renderUserLogs;
+
+    // ----------------- SPA / UI -----------------
+    function bukaHalaman(pageId, scrollToId=null){
+      document.querySelectorAll('.page-view').forEach(p=>p.classList.remove('active-page'));
+      const t = $(pageId); if (t) t.classList.add('active-page');
+      const mm = $('mobileMenuDropdown');
+      if (mm && mm.classList.contains('flex')){ mm.classList.remove('flex'); mm.classList.add('hidden'); }
+      if (scrollToId) {
+        setTimeout(()=>{ const el=$(scrollToId); if(el) el.scrollIntoView({behavior:'smooth'}); }, 100);
+      } else { window.scrollTo({top:0, behavior:'smooth'}); }
+    }
+    window.bukaHalaman = bukaHalaman;
+
+    function toggleMobileMenu(){ const m=$('mobileMenuDropdown'); m.classList.toggle('hidden'); m.classList.toggle('flex'); }
+    window.toggleMobileMenu = toggleMobileMenu;
+    function toggleModal(id){ $(id).classList.toggle('active'); }
+    window.toggleModal = toggleModal;
+    function switchPanel(panelId, btn){
+      document.querySelectorAll('.dashboard-panel').forEach(p=>p.classList.remove('active'));
+      $(panelId).classList.add('active');
+      document.querySelectorAll('.menu-btn').forEach(b=>{ b.classList.remove('bg-amber-500','text-slate-950'); b.classList.add('text-slate-400'); });
+      if (btn){ btn.classList.add('bg-amber-500','text-slate-950'); btn.classList.remove('text-slate-400'); }
+    }
+    window.switchPanel = switchPanel;
+    function toggleAdminSidebar(){ $('adminSidebar')?.classList.toggle('hidden'); }
+    window.toggleAdminSidebar = toggleAdminSidebar;
+    function toggleChat(){ $('chatBox').classList.toggle('hidden'); }
+    window.toggleChat = toggleChat;
+    function togglePassword(id,btn){ const el=$(id); if(!el) return; el.type = el.type==='password'?'text':'password'; btn.textContent = el.type==='password'?'👁':'🙈'; }
+    window.togglePassword = togglePassword;
+    function tutupPopupKades(){ const p=$('kadesPopup'); p.classList.remove('opacity-100','pointer-events-auto'); p.classList.add('opacity-0','pointer-events-none'); }
+    window.tutupPopupKades = tutupPopupKades;
+    function switchPanelPublic(id){
+      ['apbdes-section','add-section','realisasi-section'].forEach(s=>{ const el=$(s); if(el) el.classList.add('hidden'); });
+      const target=$(id); if(target) target.classList.remove('hidden');
+      ['tab-apbdes','tab-add','tab-realisasi'].forEach(tabId=>{ const b=$(tabId); if(!b) return; b.classList.remove('bg-amber-500','text-slate-900'); b.classList.add('text-slate-300','hover:bg-white/10'); });
+      const map = {'apbdes-section':'tab-apbdes','add-section':'tab-add','realisasi-section':'tab-realisasi'};
+      const active = $(map[id]); if (active){ active.classList.add('bg-amber-500','text-slate-900'); active.classList.remove('text-slate-300','hover:bg-white/10'); }
+    }
+    window.switchPanelPublic = switchPanelPublic;
+
+    function kirimPesanChat(){
+      const inp = $('chatInput'); const logs = $('chatLogs');
+      const text = inp.value.trim(); if (!text) return;
+      logs.insertAdjacentHTML('beforeend', `<div class="bg-amber-100 border border-amber-200 p-3 rounded-xl max-w-[85%] ml-auto text-slate-800 shadow-sm text-right">${escapeHtml(text)}</div>`);
+      inp.value='';
+      setTimeout(()=>{
+        const jawaban = 'Terima kasih atas pertanyaannya. Untuk informasi resmi, silakan hubungi Admin Desa atau cek halaman Layanan.';
+        logs.insertAdjacentHTML('beforeend', `<div class="bg-white border border-gray-100 p-3 rounded-xl max-w-[85%] text-slate-800 shadow-sm">${jawaban}</div>`);
+        logs.scrollTop = logs.scrollHeight;
+      }, 600);
+    }
+    window.kirimPesanChat = kirimPesanChat;
+
+    // ----------------- INIT -----------------
+    function hideLoader(){ $('globalLoader').classList.add('hidden-loader'); }
+
+    async function loadFromCloud(){
+      try {
+        if (activeProvider === 'supabase' && supabase) {
+          const { data } = await supabase.from('pengaturan_desa').select('config').eq('id',1).single();
+          if (data && data.config) DATA_IDENTITAS = Object.assign(DATA_IDENTITAS, data.config);
+        } else if (activeProvider === 'firebase' && firebaseDb) {
+          const snap = await firebaseDb.ref('pengaturan_desa/1').once('value');
+          if (snap.exists()) DATA_IDENTITAS = Object.assign(DATA_IDENTITAS, snap.val().config);
+        }
+      } catch(e){ console.warn('Cloud fetch fallback', e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadLocal();
+      await loadFromCloud();
+      renderIdentitasKeTampilan();
+      renderUserLogs();
+      $('tahunSekarang').innerText = new Date().getFullYear();
+
+      // Auto login from previous session (NON-admin roles OK)
+      if (CURRENT_USER) {
+        $('mainWebsite').classList.add('hidden');
+        $('dashboardUtama').classList.remove('hidden'); $('dashboardUtama').classList.add('flex');
+        $('adminUserSession').innerText = CURRENT_USER.username.toUpperCase();
+        $('roleBadge').innerText = CURRENT_USER.role;
+        $('dashTitle').innerText = CURRENT_USER.role==='Bendahara Desa' ? 'Panel Bendahara' : 'Panel Admin';
+        document.querySelectorAll('#adminMenus button[data-roles]').forEach(btn=>{
+          const roles = btn.dataset.roles.split(',').map(s=>s.trim());
+          btn.style.display = roles.includes(CURRENT_USER.role) ? '' : 'none';
+        });
+        if (CURRENT_USER.role === 'Bendahara Desa') {
+          switchPanel('panelTransaksi', document.querySelector('#btnMenuTransaksi'));
+        } else {
+          switchPanel('panelSurat', document.querySelector('#adminMenus button'));
+        }
+        renderAntreanSuratAdmin(); renderTransaksiAdmin(); renderRekap();
+      }
+      hideLoader();
+
+      // DB badge
+      $('dbStatusBadge').innerHTML = activeProvider==='local'
+        ? `<span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> Local Mode`
+        : `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ${activeProvider} Connected`;
+    });
+  })();
+  </script>
+</body>
+</html>
