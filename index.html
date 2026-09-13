@@ -1217,7 +1217,7 @@
     window.logoutAdmin = logoutAdmin;
 
     // ----------------- SURAT ONLINE -----------------
-    async function kirimPengajuanSurat(e){
+        async function kirimPengajuanSurat(e){
       e.preventDefault();
       const jenis = $('jenisSurat').value;
       const nik = $('nik').value.trim();
@@ -1229,56 +1229,163 @@
       if (!/^\d{16}$/.test(nik)) return tampilkanNotifikasi('NIK harus 16 digit angka','warn');
       if (nama.length < 3) return tampilkanNotifikasi('Nama minimal 3 karakter','warn');
       if (!wa) return tampilkanNotifikasi('Nomor WhatsApp wajib diisi','warn');
+      
       const btn = $('btnSubmitSurat'); btn.disabled = true;
-      if (!Array.isArray(DATA_IDENTITAS.antreanSurat)) DATA_IDENTITAS.antreanSurat = [];
-      DATA_IDENTITAS.antreanSurat.push({ jenis,nik,nama,wa,alamat,keperluan, status:'Diterima - Menunggu Proses', tanggal:new Date().toISOString() });
-      try { await simpanData(true); e.target.reset(); tampilkanNotifikasi('Pengajuan berhasil dikirim!','sukses'); }
-      catch(err){ tampilkanNotifikasi('Gagal menyimpan: '+err.message,'gagal'); }
-      finally { btn.disabled = false; }
+
+      try {
+        // TARIK DATA TERBARU DARI DB SEBELUM PUSH (Mencegah tertimpa)
+        if (activeProvider === 'supabase' && supabase) {
+          const { data } = await supabase.from('pengaturan_desa').select('config').eq('id',1).single();
+          if (data && data.config) DATA_IDENTITAS = Object.assign(DATA_IDENTITAS, data.config);
+        } else if (activeProvider === 'firebase' && firebaseDb) {
+          const snap = await firebaseDb.ref('pengaturan_desa/1').once('value');
+          if (snap.exists()) DATA_IDENTITAS = Object.assign(DATA_IDENTITAS, snap.val().config);
+        }
+
+        if (!Array.isArray(DATA_IDENTITAS.antreanSurat)) DATA_IDENTITAS.antreanSurat = [];
+        
+        // PUSH DATA BARU
+        DATA_IDENTITAS.antreanSurat.push({ 
+          id: 'SRT' + Date.now(),
+          jenis, nik, nama, wa, alamat, keperluan, 
+          status: 'Menunggu Verifikasi', 
+          tanggal: new Date().toISOString() 
+        });
+
+        await simpanData(true); 
+        e.target.reset(); 
+        tampilkanNotifikasi('Pengajuan berhasil dikirim!','sukses'); 
+      } catch(err){ 
+        tampilkanNotifikasi('Gagal menyimpan: '+err.message,'gagal'); 
+      } finally { 
+        btn.disabled = false; 
+      }
     }
+
     window.kirimPengajuanSurat = kirimPengajuanSurat;
 
-    function renderAntreanSuratAdmin(){
+        function renderAntreanSuratAdmin(){
       const tbody = $('tableSuratMasuk');
       if (!tbody) return;
       tbody.innerHTML = '';
       const list = DATA_IDENTITAS.antreanSurat || [];
       if (!list.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">Tidak ada antrean.</td></tr>`; return; }
       list.forEach((s,i)=>{
-        tbody.insertAdjacentHTML('beforeend', `<tr class="hover:bg-slate-50/80 text-xs"><td class="p-3.5"><p class="font-bold">${escapeHtml(s.nama)}</p><p class="font-mono text-slate-400">${escapeHtml(s.nik)}</p></td><td class="p-3.5 font-semibold text-blue-700">${escapeHtml(s.jenis)}</td><td class="p-3.5 text-slate-500">${escapeHtml(s.keperluan)}</td><td class="p-3.5 font-mono font-bold">${escapeHtml(s.wa)}</td><td class="p-3.5 text-center"><div class="flex gap-1.5 justify-center"><button data-i="${i}" class="btn-selesai bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-lg text-[10px]">Selesai + WA</button><button data-i="${i}" class="btn-hapus bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-2 rounded-lg text-[10px]">✕</button></div></td></tr>`);
+        let badgeStatus = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[9px] font-bold">${escapeHtml(s.status || 'Menunggu Verifikasi')}</span>`;
+        if(s.status === 'Proses Validasi Data') badgeStatus = `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[9px] font-bold">${escapeHtml(s.status)}</span>`;
+
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr class="hover:bg-slate-50/80 text-xs">
+            <td class="p-3.5">
+              <p class="font-bold">${escapeHtml(s.nama)}</p>
+              <p class="font-mono text-slate-400">${escapeHtml(s.nik)}</p>
+              <div class="mt-1">${badgeStatus}</div>
+            </td>
+            <td class="p-3.5 font-semibold text-blue-700">${escapeHtml(s.jenis)}</td>
+            <td class="p-3.5 text-slate-500">${escapeHtml(s.keperluan)}</td>
+            <td class="p-3.5 font-mono font-bold">${escapeHtml(s.wa)}</td>
+            <td class="p-3.5 text-center">
+              <div class="flex flex-col gap-1.5 justify-center">
+                <button data-i="${i}" class="btn-verifikasi bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-1.5 px-3 rounded-lg text-[10px]">1. Minta Berkas (WA)</button>
+                <button data-i="${i}" class="btn-selesai bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-lg text-[10px]">2. Selesai & Arsip</button>
+                <button data-i="${i}" class="btn-hapus bg-red-500/20 text-red-600 font-bold py-1 px-2 rounded-lg text-[10px] mt-1">Hapus</button>
+              </div>
+            </td>
+          </tr>
+        `);
       });
+
+      tbody.querySelectorAll('.btn-verifikasi').forEach(b=>b.addEventListener('click',()=>mintaBerkasWarga(parseInt(b.dataset.i,10))));
       tbody.querySelectorAll('.btn-selesai').forEach(b=>b.addEventListener('click',()=>selesaikanSurat(parseInt(b.dataset.i,10))));
       tbody.querySelectorAll('.btn-hapus').forEach(b=>b.addEventListener('click',()=>hapusAntrean(parseInt(b.dataset.i,10))));
     }
+
     window.renderAntreanSuratAdmin = renderAntreanSuratAdmin;
 
-    function selesaikanSurat(idx){
+        // FUNGSI BARU: MINTA BERKAS KTP/KK VIA WA
+    async function mintaBerkasWarga(idx){
       const s = DATA_IDENTITAS.antreanSurat[idx]; if(!s) return;
-      if (!Array.isArray(DATA_IDENTITAS.arsipSuratWarga)) DATA_IDENTITAS.arsipSuratWarga = [];
-      DATA_IDENTITAS.arsipSuratWarga.push({ nik:s.nik, jenis:s.jenis, fileName:`${s.jenis}_${s.nama}.pdf`, urlDownload:`#download-${s.nik}`, tanggalTerbit:new Date().toISOString() });
-      DATA_IDENTITAS.antreanSurat.splice(idx,1);
-      simpanData();
-      const msg = `*PELAYANAN DESA ${DATA_IDENTITAS.namaDesa.toUpperCase()}*\n\nHalo *${s.nama}*, pengajuan ${s.jenis} Anda telah SELESAI. Silakan unduh di ${location.href}`;
+      
+      DATA_IDENTITAS.antreanSurat[idx].status = 'Proses Validasi Data';
+      await simpanData(true);
+      renderAntreanSuratAdmin(); // Update UI
+      
+      const msg = `*PELAYANAN DESA ${DATA_IDENTITAS.namaDesa.toUpperCase()}*\n\nHalo *${s.nama}*, pengajuan *${s.jenis}* Anda sedang kami proses.\n\nUntuk keperluan verifikasi dan penandatanganan dokumen, mohon balas pesan ini dengan mengirimkan foto dokumen pendukung (Foto KK / KTP). Terima kasih.`;
       const wa = formatNomorWA(s.wa);
       window.open(`https://api.whatsapp.com/send?phone=${wa}&text=${encodeURIComponent(msg)}`,'_blank','noopener');
     }
+
+    // FUNGSI UPDATE: PINDAH KE ARSIP SAAT SELESAI
+    async function selesaikanSurat(idx){
+      const s = DATA_IDENTITAS.antreanSurat[idx]; if(!s) return;
+      if (!Array.isArray(DATA_IDENTITAS.arsipSuratWarga)) DATA_IDENTITAS.arsipSuratWarga = [];
+      
+      DATA_IDENTITAS.arsipSuratWarga.push({ 
+        id: s.id || ('SRT' + Date.now()),
+        nik: s.nik, 
+        nama: s.nama,
+        jenis: s.jenis, 
+        status: 'Selesai',
+        fileName: `${s.jenis}_${s.nama}.pdf`, 
+        urlDownload: `#download-${s.nik}`, // Area perbaikan Barcode/PDF asli di fase selanjutnya
+        tanggalTerbit: new Date().toISOString() 
+      });
+      
+      DATA_IDENTITAS.antreanSurat.splice(idx,1);
+      await simpanData(true);
+      renderAntreanSuratAdmin(); 
+      
+      const msg = `*PELAYANAN DESA ${DATA_IDENTITAS.namaDesa.toUpperCase()}*\n\nHalo *${s.nama}*, pengajuan *${s.jenis}* Anda telah SELESAI dan ditandatangani secara digital.\n\nSilakan lacak dan unduh dokumen Anda di menu layanan website kami dengan memasukkan NIK.`;
+      const wa = formatNomorWA(s.wa);
+      window.open(`https://api.whatsapp.com/send?phone=${wa}&text=${encodeURIComponent(msg)}`,'_blank','noopener');
+    }
+
     function hapusAntrean(idx){
       konfirmasi('Hapus antrean ini?').then(ok=>{ if(ok){ DATA_IDENTITAS.antreanSurat.splice(idx,1); simpanData(); } });
     }
 
-    function cekDownloadSuratWarga(){
+        function cekDownloadSuratWarga(){
       const nik = $('inputNikDownload').value.trim();
       const div = $('hasilDownloadSurat');
       if (!/^\d{16}$/.test(nik)) return tampilkanNotifikasi('NIK harus 16 digit','warn');
+      
+      const antrean = DATA_IDENTITAS.antreanSurat || [];
       const arsip = DATA_IDENTITAS.arsipSuratWarga || [];
-      const b = arsip.find(x=>x.nik === nik);
-      if (b) {
+      
+      // Gabungkan pencarian (Sedang Diproses + Sudah Selesai)
+      const dataDitemukan = [...antrean.filter(x => x.nik === nik), ...arsip.filter(x => x.nik === nik)];
+
+      if (dataDitemukan.length > 0) {
         div.classList.remove('hidden');
-        $('h4JudulDownloadSurat').innerText = b.jenis;
-        $('txtNamaFileDownload').innerText = b.fileName;
-        $('btnLinkDownloadSurat').href = b.urlDownload;
-      } else { div.classList.add('hidden'); tampilkanNotifikasi('Surat belum diproses.','warn'); }
+        // Bersihkan div, buat judul
+        div.innerHTML = `<div class="mb-3 border-b border-gray-100 pb-3">
+          <p class="text-[10px] font-bold text-brand uppercase tracking-widest">Hasil Pelacakan Pengajuan</p>
+          <h4 class="text-sm font-black text-slate-800">NIK: ${nik}</h4>
+        </div>`;
+        
+        // Loop semua data yang ditemukan
+        dataDitemukan.forEach(b => {
+          const isSelesai = b.status === 'Selesai';
+          const colorStat = isSelesai ? 'text-emerald-600' : 'text-amber-500';
+          
+          let tombolUnduh = isSelesai 
+            ? `<a href="${b.urlDownload}" target="_blank" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-center font-bold text-xs py-2 px-4 rounded-lg transition shadow block mt-2">Unduh Dokumen (PDF)</a>`
+            : `<div class="w-full bg-gray-100 text-gray-400 text-center font-bold text-[11px] py-2 px-4 rounded-lg mt-2 cursor-not-allowed">Surat Sedang Diverifikasi / Diproses Admin</div>`;
+
+          div.innerHTML += `
+          <div class="mb-4 p-3 border border-gray-100 rounded-xl bg-gray-50 shadow-sm">
+            <p class="text-sm font-bold text-slate-800">${b.jenis}</p>
+            <p class="text-[10px] ${colorStat} font-bold uppercase mb-2">Status: ${b.status || 'Menunggu Verifikasi'}</p>
+            <p class="text-[11px] text-slate-600 mb-2">Nama Berkas: <span class="font-mono text-slate-900">${b.fileName || 'Belum Terbit'}</span></p>
+            ${tombolUnduh}
+          </div>`;
+        });
+      } else { 
+        div.classList.add('hidden'); 
+        tampilkanNotifikasi('Tidak ada data pengajuan surat dengan NIK tersebut.','warn'); 
+      }
     }
+
     window.cekDownloadSuratWarga = cekDownloadSuratWarga;
 
     // ----------------- TRANSAKSI BENDAHARA -----------------
